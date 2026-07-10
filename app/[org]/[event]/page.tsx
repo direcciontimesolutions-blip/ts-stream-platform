@@ -7,6 +7,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { verifyAttendeeToken } from '@/lib/auth'
 import BrandedLayout from '@/components/BrandedLayout'
 import LoginForm from '@/components/LoginForm'
+import OpenRegisterForm from '@/components/OpenRegisterForm'
 import type { Organization } from '@/types'
 
 interface PageProps {
@@ -90,12 +91,14 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     secondary_color?: string
     logo_url?: string
     background_color?: string
+    open_registration?: boolean
   }
 
   // Estado del evento — mensajes correspondientes
   const isDraft = eventData.status === 'draft'
   const isEnded = eventData.status === 'ended'
   const isLive = eventData.status === 'live'
+  const isOpenRegistration = branding.open_registration === true
 
   const primaryColor =
     branding.primary_color ?? organization.primary_color
@@ -157,14 +160,22 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
             </div>
           )}
 
-          {/* Formulario de login — solo si el evento esta live */}
+          {/* Formulario de acceso — solo si el evento esta live */}
           {isLive && !kicked && (
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-              <LoginForm
-                org={org}
-                event={event}
-                primaryColor={primaryColor}
-              />
+              {isOpenRegistration ? (
+                <OpenRegisterForm
+                  org={org}
+                  event={event}
+                  primaryColor={primaryColor}
+                />
+              ) : (
+                <LoginForm
+                  org={org}
+                  event={event}
+                  primaryColor={primaryColor}
+                />
+              )}
             </div>
           )}
         </div>

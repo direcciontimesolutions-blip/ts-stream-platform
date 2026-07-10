@@ -53,7 +53,12 @@ export async function PATCH(
     }
 
     const { id } = await params
-    const body = await req.json() as { status?: string; youtube_url?: string; branding?: Record<string, unknown> }
+    const body = await req.json() as {
+      status?: string
+      youtube_url?: string
+      branding?: Record<string, unknown>
+      open_registration?: boolean
+    }
 
     const allowedFields: Record<string, unknown> = {}
     if (body.status && ['draft', 'live', 'ended'].includes(body.status)) {
@@ -61,6 +66,13 @@ export async function PATCH(
     }
     if (body.youtube_url !== undefined) allowedFields.youtube_url = body.youtube_url
     if (body.branding !== undefined) allowedFields.branding = body.branding
+    if (typeof body.open_registration === 'boolean') {
+      // open_registration se almacena dentro del branding JSON
+      const supabasePre = createServiceRoleClient()
+      const { data: current } = await supabasePre.from('events').select('branding').eq('id', id).single()
+      const existingBranding = (current?.branding ?? {}) as Record<string, unknown>
+      allowedFields.branding = { ...existingBranding, open_registration: body.open_registration }
+    }
 
     if (Object.keys(allowedFields).length === 0) {
       return NextResponse.json({ error: 'Ningun campo valido para actualizar.' }, { status: 400 })

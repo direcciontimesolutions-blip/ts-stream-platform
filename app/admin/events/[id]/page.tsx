@@ -33,6 +33,7 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
 const STATUS_TRANSITIONS: Record<string, { label: string; next: string; color: string }> = {
   draft: { label: 'Poner en vivo', next: 'live', color: 'bg-red-600 hover:bg-red-700' },
   live: { label: 'Finalizar evento', next: 'ended', color: 'bg-gray-600 hover:bg-gray-700' },
+  ended: { label: 'Reabrir evento', next: 'live', color: 'bg-orange-600 hover:bg-orange-700' },
 }
 
 type EventWithOrg = Event & { organizations: Organization }
@@ -63,6 +64,8 @@ export default function EventDetailPage() {
   const [chatMessages, setChatMessages] = useState<AdminMessage[]>([])
   const [chatTab, setChatTab] = useState(false)
   const [chatToggling, setChatToggling] = useState(false)
+  const [chatClearing, setChatClearing] = useState(false)
+  const [openRegToggling, setOpenRegToggling] = useState(false)
 
   // Moderadores
   const [moderators, setModerators] = useState<EventModerator[]>([])
@@ -143,6 +146,35 @@ export default function EventDetailPage() {
   async function handleDeleteMessage(messageId: string) {
     await fetch(`/api/events/${eventId}/chat/${messageId}`, { method: 'DELETE' })
     fetchChatMessages()
+  }
+
+  async function handleClearChat() {
+    if (!confirm('¿Borrar todos los mensajes del chat? Esta acción no se puede deshacer.')) return
+    setChatClearing(true)
+    try {
+      await fetch(`/api/admin/events/${eventId}/chat`, { method: 'DELETE' })
+      setChatMessages([])
+    } finally { setChatClearing(false) }
+  }
+
+  async function handleOpenRegToggle() {
+    if (!event) return
+    setOpenRegToggling(true)
+    const branding = (event.branding ?? {}) as Record<string, unknown>
+    const current = branding.open_registration === true
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open_registration: !current }),
+      })
+      if (res.ok) {
+        setEvent((prev) => prev ? {
+          ...prev,
+          branding: { ...((prev.branding ?? {}) as object), open_registration: !current },
+        } : prev)
+      }
+    } finally { setOpenRegToggling(false) }
   }
 
   async function handleInviteModerator(e: React.FormEvent) {
@@ -231,6 +263,7 @@ export default function EventDetailPage() {
   const eventUrl = `${appUrl}/${event.organizations.slug}/${event.slug}`
   const transition = STATUS_TRANSITIONS[event.status]
   const badgeColor = STATUS_BADGE_COLORS[event.status] ?? STATUS_BADGE_COLORS.draft
+  const isOpenReg = ((event.branding ?? {}) as Record<string, unknown>).open_registration === true
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -345,6 +378,15 @@ export default function EventDetailPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {chatTab && chatMessages.length > 0 && (
+                <button
+                  onClick={handleClearChat}
+                  disabled={chatClearing}
+                  className="text-xs text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-40"
+                >
+                  {chatClearing ? 'Limpiando...' : 'Limpiar chat'}
+                </button>
+              )}
               <button
                 onClick={() => { setChatTab((v) => !v); if (!chatTab) fetchChatMessages() }}
                 className="text-xs text-gray-400 hover:text-white transition-colors"
@@ -536,13 +578,38 @@ export default function EventDetailPage() {
               </h2>
               <p className="text-white text-lg font-semibold mt-1">{attendees.length}</p>
             </div>
-            <button
-              onClick={() => setShowImport(true)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-colors"
-            >
-              Importar CSV
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Registro abierto</span>
+                <button
+                  onClick={handleOpenRegToggle}
+                  disabled={openRegToggling}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
+                    isOpenReg ? 'bg-teal-600' : 'bg-gray-700'
+                  }`}
+                  aria-label={isOpenReg ? 'Desactivar registro abierto' : 'Activar registro abierto'}
+                  role="switch"
+                  aria-checked={isOpenReg}
+                  title={isOpenReg ? 'Los asistentes ingresan con nombre y correo' : 'Los asistentes necesitan usuario y contraseña'}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isOpenReg ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              {!isOpenReg && (
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                >
+                  Importar CSV
+                </button>
+              )}
+            </div>
           </div>
+          {isOpenReg && (
+            <div className="mb-4 bg-teal-500/10 border border-teal-500/25 rounded-lg px-4 py-3 text-sm text-teal-300">
+              Registro abierto activo — los asistentes ingresan con nombre y correo, sin contraseña. Cada ingreso queda registrado independientemente.
+            </div>
+          )}
 
           {importFeedback && (
             <div className="mb-4 bg-green-500/15 border border-green-500/30 text-green-300 text-sm px-4 py-3 rounded-lg" role="status">

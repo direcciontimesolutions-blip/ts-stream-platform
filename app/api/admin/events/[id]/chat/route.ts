@@ -45,6 +45,34 @@ export async function GET(
   }
 }
 
+// DELETE — limpiar todos los mensajes del chat (borrado lógico)
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabaseAdmin = await createServerSupabaseClient()
+    const { data: { user } } = await supabaseAdmin.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
+
+    const { id: eventId } = await params
+    const supabase = createServiceRoleClient()
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('event_id', eventId)
+      .is('deleted_at', null)
+
+    if (error) return NextResponse.json({ error: 'Error al limpiar.' }, { status: 500 })
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('Error DELETE chat:', err)
+    return NextResponse.json({ error: 'Error interno.' }, { status: 500 })
+  }
+}
+
 // PATCH — toggle chat_enabled (solo admin)
 export async function PATCH(
   req: NextRequest,
