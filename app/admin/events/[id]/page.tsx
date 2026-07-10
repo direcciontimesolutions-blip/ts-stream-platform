@@ -76,6 +76,7 @@ export default function EventDetailPage() {
   const [inviteLink, setInviteLink] = useState<string | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
   const [revokingId, setRevokingId] = useState<string | null>(null)
+  const [deletingAttendeeId, setDeletingAttendeeId] = useState<string | null>(null)
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -227,6 +228,16 @@ export default function EventDetailPage() {
     if (!confirm('¿Restaurar el acceso de este asistente?')) return
     await fetch(`/api/admin/events/${eventId}/attendees/${attendeeId}/restore`, { method: 'POST' })
     fetchEvent()
+  }
+
+  async function handleDeleteAttendee(attendeeId: string, name: string) {
+    if (deletingAttendeeId) return
+    if (!confirm(`¿Eliminar a "${name}" del evento? Se borrarán sus sesiones y mensajes.`)) return
+    setDeletingAttendeeId(attendeeId)
+    try {
+      await fetch(`/api/admin/events/${eventId}/attendees/${attendeeId}`, { method: 'DELETE' })
+      setAttendees((prev) => prev.filter((a) => a.id !== attendeeId))
+    } finally { setDeletingAttendeeId(null) }
   }
 
   function handleImportSuccess(result: ImportResult) {
@@ -634,6 +645,7 @@ export default function EventDetailPage() {
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Usuario</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Rol</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Estado</th>
+                      <th className="px-5 py-3" />
                     </tr>
                   </thead>
                   <tbody>
@@ -664,6 +676,16 @@ export default function EventDetailPage() {
                           ) : (
                             <span className="text-xs text-gray-600">—</span>
                           )}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <button
+                            onClick={() => handleDeleteAttendee(attendee.id, attendee.full_name)}
+                            disabled={deletingAttendeeId === attendee.id}
+                            className="text-xs text-red-400/50 hover:text-red-400 disabled:opacity-30 transition-colors px-2 py-1 rounded hover:bg-red-500/10"
+                            title="Eliminar asistente"
+                          >
+                            {deletingAttendeeId === attendee.id ? '...' : 'Eliminar'}
+                          </button>
                         </td>
                       </tr>
                     ))}
