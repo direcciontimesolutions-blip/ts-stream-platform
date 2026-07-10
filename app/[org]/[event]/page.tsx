@@ -1,14 +1,13 @@
-// app/[org]/[event]/page.tsx — Login de asistentes al evento
+// app/[org]/[event]/page.tsx — Portal de acceso al evento (v2 — split-screen template)
 
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { verifyAttendeeToken } from '@/lib/auth'
-import BrandedLayout from '@/components/BrandedLayout'
 import LoginForm from '@/components/LoginForm'
 import OpenRegisterForm from '@/components/OpenRegisterForm'
-import type { Organization } from '@/types'
 
 interface PageProps {
   params: Promise<{ org: string; event: string }>
@@ -43,7 +42,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   const { kicked } = await searchParams
   const supabase = createServiceRoleClient()
 
-  // 1. Buscar organizacion por slug
+  // 1. Organización
   const { data: organization, error: orgError } = await supabase
     .from('organizations')
     .select('id, name, slug, logo_url, primary_color, secondary_color')
@@ -54,7 +53,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     notFound()
   }
 
-  // 2. Buscar evento por org_id + slug
+  // 2. Evento
   const { data: eventData, error: eventError } = await supabase
     .from('events')
     .select('id, title, slug, status, branding, description')
@@ -66,8 +65,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     notFound()
   }
 
-  // Si ya hay sesión válida, el evento está live, y no es un kicked redirect → ir al watch.
-  // Solo redirigir si el evento está live para evitar loop cuando el evento termina.
+  // 3. Redirigir si ya tiene sesión válida y evento está live
   if (!kicked && eventData.status === 'live') {
     const cookieStore = await cookies()
     const token = cookieStore.get('ts_stream_token')?.value
@@ -94,75 +92,139 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     open_registration?: boolean
   }
 
-  // Estado del evento — mensajes correspondientes
   const isDraft = eventData.status === 'draft'
   const isEnded = eventData.status === 'ended'
   const isLive = eventData.status === 'live'
   const isOpenRegistration = branding.open_registration === true
 
-  const primaryColor =
-    branding.primary_color ?? organization.primary_color
+  const primaryColor = branding.primary_color ?? organization.primary_color
+  const bgColor = branding.background_color ?? '#0C0C14'
+  const logoUrl = branding.logo_url ?? organization.logo_url
 
   return (
-    <BrandedLayout
-      branding={branding}
-      organization={organization as Organization}
-      eventTitle={eventData.title}
+    <div
+      className="min-h-screen flex flex-col lg:flex-row"
+      style={{ backgroundColor: bgColor }}
     >
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm space-y-8">
-          {/* Titulo del evento */}
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold text-white leading-tight">
-              {eventData.title}
-            </h1>
-            {eventData.description && (
-              <p className="text-white/50 text-sm">{eventData.description}</p>
-            )}
-          </div>
+      {/* ── Panel izquierdo: identidad del evento ── */}
+      <div
+        className="relative lg:w-[58%] flex flex-col items-center justify-center px-10 py-20 overflow-hidden"
+        style={{
+          background: `radial-gradient(ellipse 80% 70% at 35% 55%, ${primaryColor}18 0%, transparent 100%), ${bgColor}`,
+        }}
+      >
+        {/* Barra accent superior */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[3px]"
+          style={{ backgroundColor: primaryColor }}
+        />
 
-          {/* Indicador de estado */}
+        {/* Círculo decorativo inferior */}
+        <div
+          className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-[0.04] pointer-events-none"
+          style={{ backgroundColor: primaryColor }}
+          aria-hidden
+        />
+
+        <div className="relative z-10 flex flex-col items-center max-w-lg text-center">
+          {/* Logo del cliente */}
+          {logoUrl ? (
+            <div className="mb-10 bg-white rounded-2xl px-8 py-5 inline-flex items-center justify-center shadow-lg">
+              <Image
+                src={logoUrl}
+                alt={`Logo ${organization.name}`}
+                width={220}
+                height={88}
+                className="h-[88px] w-auto object-contain"
+                priority
+              />
+            </div>
+          ) : (
+            <div className="mb-10 flex flex-col items-center gap-3">
+              <span
+                className="text-2xl font-bold tracking-tight"
+                style={{ color: primaryColor }}
+              >
+                {organization.name}
+              </span>
+              <div className="w-8 h-[2px]" style={{ backgroundColor: primaryColor }} />
+            </div>
+          )}
+
+          {/* Nombre del evento */}
+          <h1 className="text-3xl lg:text-[2.6rem] font-bold text-white leading-tight">
+            {eventData.title}
+          </h1>
+
+          {eventData.description && (
+            <p className="mt-4 text-white/45 text-sm leading-relaxed max-w-xs">
+              {eventData.description}
+            </p>
+          )}
+
+          {/* Badge En vivo */}
           {isLive && (
-            <div className="flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+            <div className="mt-7 flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden />
               <span className="text-red-400 text-xs font-semibold uppercase tracking-widest">
                 En vivo
               </span>
             </div>
           )}
+        </div>
 
-          {/* Estados no-live: mostrar mensaje amable */}
+        {/* Footer Powered by */}
+        <div className="absolute bottom-7 left-0 right-0 flex justify-center">
+          <span className="text-white/20 text-xs tracking-wide">
+            Powered by Time Solutions
+          </span>
+        </div>
+      </div>
+
+      {/* ── Panel derecho: formulario ── */}
+      <div
+        className="lg:w-[42%] flex flex-col items-center justify-center px-8 py-20 relative"
+        style={{ borderLeft: `1px solid ${primaryColor}22` }}
+      >
+        <div className="w-full max-w-sm space-y-5">
+          {/* Mensajes de estado */}
           {isDraft && (
-            <div className="bg-yellow-500/10 border border-yellow-500/25 rounded-xl p-5 text-center space-y-2">
-              <p className="text-yellow-300 font-medium">Evento no disponible aun</p>
-              <p className="text-yellow-300/60 text-sm">
-                El evento comenzara pronto. Vuelve mas tarde.
-              </p>
+            <div className="bg-yellow-500/10 border border-yellow-500/25 rounded-xl p-5 text-center space-y-1">
+              <p className="text-yellow-300 font-medium text-sm">Evento no disponible aún</p>
+              <p className="text-yellow-300/60 text-xs">El evento comenzará pronto. Vuelve más tarde.</p>
             </div>
           )}
 
           {isEnded && (
-            <div className="bg-white/5 border border-white/15 rounded-xl p-5 text-center space-y-2">
-              <p className="text-white/80 font-medium">Este evento ha finalizado</p>
-              <p className="text-white/40 text-sm">
-                Gracias por tu participacion.
-              </p>
+            <div className="bg-white/5 border border-white/15 rounded-xl p-5 text-center space-y-1">
+              <p className="text-white/80 font-medium text-sm">Este evento ha finalizado</p>
+              <p className="text-white/40 text-xs">Gracias por tu participación.</p>
             </div>
           )}
 
-          {/* Mensaje de acceso revocado */}
           {kicked === '1' && (
-            <div className="bg-red-500/10 border border-red-500/25 rounded-xl p-5 text-center space-y-2">
-              <p className="text-red-300 font-medium">Acceso revocado</p>
-              <p className="text-red-300/60 text-sm">
-                El organizador ha finalizado tu acceso al evento.
-              </p>
+            <div className="bg-red-500/10 border border-red-500/25 rounded-xl p-5 text-center space-y-1">
+              <p className="text-red-300 font-medium text-sm">Acceso revocado</p>
+              <p className="text-red-300/60 text-xs">El organizador ha finalizado tu acceso al evento.</p>
             </div>
           )}
 
-          {/* Formulario de acceso — solo si el evento esta live */}
+          {/* Tarjeta del formulario */}
           {isLive && !kicked && (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
+            <div
+              className="rounded-2xl p-7"
+              style={{
+                background: 'rgba(255,255,255,0.035)',
+                border: `1px solid ${primaryColor}30`,
+                borderTop: `2px solid ${primaryColor}`,
+              }}
+            >
+              <p
+                className="text-xs font-semibold uppercase tracking-[0.2em] mb-5"
+                style={{ color: `${primaryColor}CC` }}
+              >
+                {isOpenRegistration ? 'Registro' : 'Acceso al evento'}
+              </p>
               {isOpenRegistration ? (
                 <OpenRegisterForm
                   org={org}
@@ -180,6 +242,6 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
           )}
         </div>
       </div>
-    </BrandedLayout>
+    </div>
   )
 }
