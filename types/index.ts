@@ -24,6 +24,7 @@ export interface EventBranding {
   secondary_color?: string
   logo_url?: string
   background_color?: string
+  open_registration?: boolean
 }
 
 export interface Event {

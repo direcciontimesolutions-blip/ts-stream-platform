@@ -160,7 +160,7 @@ export default function EventDetailPage() {
   async function handleOpenRegToggle() {
     if (!event) return
     setOpenRegToggling(true)
-    const branding = (event.branding ?? {}) as Record<string, unknown>
+    const branding = event.branding ?? {}
     const current = branding.open_registration === true
     try {
       const res = await fetch(`/api/admin/events/${eventId}`, {
@@ -171,7 +171,7 @@ export default function EventDetailPage() {
       if (res.ok) {
         setEvent((prev) => prev ? {
           ...prev,
-          branding: { ...((prev.branding ?? {}) as object), open_registration: !current },
+          branding: { ...(prev.branding ?? {}), open_registration: !current },
         } : prev)
       }
     } finally { setOpenRegToggling(false) }
@@ -263,7 +263,7 @@ export default function EventDetailPage() {
   const eventUrl = `${appUrl}/${event.organizations.slug}/${event.slug}`
   const transition = STATUS_TRANSITIONS[event.status]
   const badgeColor = STATUS_BADGE_COLORS[event.status] ?? STATUS_BADGE_COLORS.draft
-  const isOpenReg = ((event.branding ?? {}) as Record<string, unknown>).open_registration === true
+  const isOpenReg = (event.branding ?? {}).open_registration === true
 
   return (
     <div className="min-h-screen bg-gray-950">
