@@ -1,0 +1,239 @@
+unit_number,owner_name,coefficient
+Apto 01-0101,Maria Hilaria Sevilla Garcia,0.4624
+Apto 01-0102,Sylvia Elena Rivera Escobar,0.3956
+Apto 01-0201,Maria Eugenia Diez Loaiza,0.4624
+Apto 01-0202,Oscar Ignacio Isaza Isaza,0.5526
+Apto 01-0301,Graciela Palacio De Roldan,0.5524
+Apto 01-0302,Jorge Andres Montoya Ossa,0.5526
+Apto 01-0401,Dora Luz Arango Garcia,0.4624
+Apto 01-0402,Luz Elena Tamayo Rodriguez,0.5524
+Apto 01-0501,Samuel Mauricio Isaza Arango,0.5809
+Apto 01-0502,Anapatricia Suarez Niño,0.5809
+Apto 02-0103,Guillermo Escobar Gaviria,0.4624
+Apto 02-0104,Alice Fergursson De Montoya,0.3316
+Apto 02-0203,Beatriz Susana Arenas Ochoa,0.5526
+Apto 02-0204,Julio Cesar Marin Velasquez,0.475
+Apto 02-0303,Maria Eugenia Gonzalez De Hoyos,0.5524
+Apto 02-0304,Alexander Ramirez Cañaveral,0.5524
+Apto 02-0403,Edwin Albeiro Gomez Ruiz,0.4624
+Apto 02-0404,Juan Jose Molina Arcila,0.4965
+Apto 02-0503,Beatriz Soto Sanchez,0.5764
+Apto 02-0504,Sylvia Rosa Rivera Escobar,0.4269
+Apto 03-0105,Juan David Restrepo Diez,0.4624
+Apto 03-0106,Alina Maria Franco Alarcon,0.5554
+Apto 03-0205,Victor Manuel Aguirre Del Valle,0.468
+Apto 03-0206,Edgar De Jesus Munera Tuberquia,0.4619
+Apto 03-0305,Carlos Alberto Sanchez Lopez,0.5526
+Apto 03-0306,Manuel Jose Acevedo Rojas,0.4619
+Apto 03-0405,Mauricio Velez Mejia,0.468
+Apto 03-0406,Bairon De Jesus Suarez Osorio,0.4619
+Apto 03-0505,Luz Sthella Aramburo Misas,0.4965
+Apto 03-0506,Gustavo Adolfo Sarmiento Rugeles,0.4736
+Apto 04-0107,Libia Zapata Sierra,0.4635
+Apto 04-0207,Maria Camila Lopez Tobon,0.4569
+Apto 04-0307,Juan Fernando Zuluaga Orrego,0.4513
+Apto 04-0407,Jaime De Jesus Palacio Zapata,0.5415
+Apto 04-0507,Carlos Augusto Perez Zapata,0.4569
+Apto 05-0109,Isabel Cristina Ortiz Molina,0.468
+Apto 05-0110,Rocio De Jesus Olaya De Arredondo,0.4012
+Apto 05-0209,Juan Carlos Cadavid Gonzalez,0.4675
+Apto 05-0210,Jam Paul Jaramillo Moncada,0.468
+Apto 05-0309,Deycedoreny Escudero Jaramillo,0.4675
+Apto 05-0310,Maria Estella Vinasco,0.468
+Apto 05-0409,Tatiana Arias Gomez,0.4675
+Apto 05-0410,Luz Marleny Uribe Mesa,0.468
+Apto 05-0509,Mayra Carolina Escobar Grajales,0.4792
+Apto 05-0510,Gloria Londoño Saldarriaga,0.4965
+Apto 06-0111,Rodrigo Jimenez Hernandez,0.5524
+Apto 06-0112,Mario Escobar Escudero,0.4012
+Apto 06-0211,Alexandra Maria Londoño Soto,0.5479
+Apto 06-0212,Juan Carlos Giraldo Amaya,0.468
+Apto 06-0311,Ana Maria Lopez Correa,0.3985
+Apto 06-0312,Yeny Astrid Giraldo Piedrahita,0.5524
+Apto 06-0411,Florelba Maria Granados Albarracin,0.5526
+Apto 06-0412,Cc 98668750 Arbey Arbelaez Arboleda,0.468
+Apto 06-0511,Tatiana Correa Herrera,0.4965
+Apto 06-0512,Claudia Franco Álzate,0.4965
+Apto 07-0123,Omar De Jesús Vera Arbelaez,0.5196
+Apto 07-0124,Marco Aurelio Ramirez Garcia,0.5196
+Apto 07-0223,Juan Guillermo Aguirre Restrepo,0.5391
+Apto 07-0224,Natalia Hoyos Hoyos,0.4695
+Apto 07-0323,Claudia Maria Montoya Perez,0.4639
+Apto 07-0324,Ivan Dario Zapata Gonzalez,0.4639
+Apto 07-0423,Judith Marleny Orozco Alvarez,0.4123
+Apto 07-0424,Carlos Gerson Gil Torrijos,0.4193
+Apto 07-0523,Patricia Elena Cadavid Valencia,0.4472
+Apto 07-0524,Luz Piedad Cadavid Valencia,0.4473
+Apto 08-0119,Olga Trujillo Rodriguez,0.2619
+Apto 08-0120,Orlando De J. Garces Bustamante,0.2619
+Apto 08-0121,Diego Gonzalez Lopez,0.3385
+Apto 08-0122,Eugenia Cardona Cardenas,0.2619
+Apto 08-0219,Luis Alonso Londoño Sanchez,0.3315
+Apto 08-0220,Maria Gabriela Gomez Aristizabal,0.3385
+Apto 08-0221,Cecilia Gomez Aristizabal,0.3385
+Apto 08-0222,Dora Alicia Zapata Piedrahita,0.3385
+Apto 08-0319,Nuria Del Socorro Sepulveda De Moncada,0.3385
+Apto 08-0320,Silvia Elena Londoño Londoño,0.3385
+Apto 08-0321,Margarita Maria Jaller Botero,0.3315
+Apto 08-0322,Tarcisiode Jesus Salazar Jimenez,0.3315
+Apto 08-0419,Margarita Cecilia Trujillo,0.3385
+Apto 08-0420,Cleotilde Ospina Morales,0.3385
+Apto 08-0421,Dora Alicia Mejia Duque,0.3385
+Apto 08-0422,Leidy Alejandra Sanchez Ceballos,0.3385
+Apto 08-0519,Ana Cristina Castaño Martinez,0.2619
+Apto 08-0520,Teresita Soray Marin Quintero,0.3385
+Apto 08-0521,Claudia Patricia Restrepo Muñoz,0.2619
+Apto 08-0522,Martha Lucia Valencia Madrigal,0.3385
+Apto 09-0113,Jorge Eliecer Urrea Nivia,0.5196
+Apto 09-0114,Yolanda Quiroz Benavides,0.5196
+Apto 09-0213,Jairo Nicolas Aristizabal Pineda,0.4695
+Apto 09-0214,Luis Ivan Jaramillo Villa,0.4625
+Apto 09-0313,Jose Rodrigo Morales Osorio,0.4639
+Apto 09-0314,Edison Jose Marin Rincon,0.4569
+Apto 09-0413,Gonzalo Velasquez Palacio,0.4193
+Apto 09-0414,Cesar Augusto Acosta Restrepo,0.4193
+Apto 09-0513,Beatriz Elena Restrepo Estrada,0.3706
+Apto 09-0514,Alfonso Tamayo Mejia,0.4402
+Apto 10-0115,Pedro Jose Rivera Rendon,0.3315
+Apto 10-0116,Jaime Restrepo Villegas,0.3315
+Apto 10-0117,Gilberto Antonio Ceballos Calle,0.3315
+Apto 10-0118,Claudia Maria Angel Pelaez,0.3315
+Apto 10-0215,Luz Marina Velez Posada,0.3315
+Apto 10-0216,Josue Botero Gutierrez,0.3385
+Apto 10-0217,Gomez Y Cia Inversiones Alzate,0.3385
+Apto 10-0218,Adriana Elena Cardona Arango,0.3315
+Apto 10-0315,Willian Nicolas Rios Mejia,0.3315
+Apto 10-0316,Ingrid Surlay Villa Soto,0.2619
+Apto 10-0317,Luz Gladys Arboleda De Jaramillo,0.3315
+Apto 10-0318,Wilson Elias Echeverri,0.3315
+Apto 10-0415,Perla Mejia Fernandez,0.3315
+Apto 10-0416,Juan Pablo Quintero Arango,0.3385
+Apto 10-0417,Cecilia Elena Acosta Zapata,0.2619
+Apto 10-0418,Jorge Eduardo Salazar Mazuera,0.3315
+Apto 10-0515,Ruben Dario Gomez Mejía,0.3315
+Apto 10-0516,Ltda Inversiones Surrambay,0.3385
+Apto 10-0517,Anapatricia Suarez Niño,0.3315
+Apto 10-0518,Aura Lucia Gil Ramirez,0.3315
+Apto 11-0129,Jose Manuel Garcia Ramirez,0.4096
+Apto 11-0130,Zaida Janeth Marin Osorio,0.3455
+Apto 11-0229,Ana Patricia Suarez Niño,0.4792
+Apto 11-0230,Beatriz Eugenia Gonazalez De Betancur,0.4792
+Apto 11-0329,Luis Fernando Vargas Uribe,0.4792
+Apto 11-0330,Maria Liliana Marin Gaviria,0.4792
+Apto 11-0429,Zaida Patricia Chavarria Arango,0.4096
+Apto 11-0430,Jairo Alonso Gallon Perez,0.4792
+Apto 11-0529,Claudia Patricia Jurado Jimenez,0.4792
+Apto 11-0530,Beatriz Estella Arboleda Toro,0.4792
+Apto 12-0127,Ernesto De Jesus Sepulveda Correa,0.3065
+Apto 12-0128,Rafael Angel Penagos Arias,0.3065
+Apto 12-0227,Divid Del Carmen Restrepo Loaiza,0.3761
+Apto 12-0228,Carolina Velasquez Sepulveda,0.3831
+Apto 12-0327,Diana Velez Arenas,0.3761
+Apto 12-0328,Nora Cecilia Lopez Londoño,0.3831
+Apto 12-0427,Antonio Lopez Jhonson,0.3831
+Apto 12-0428,Luz Marina Quintero Correa,0.3761
+Apto 12-0527,Yury Lopez Vahos,0.3761
+Apto 12-0528,Gloria Piedad Gaviria Perez,0.3761
+Apto 13-0125,Adriana Maria Carvajal Mejia,0.4792
+Apto 13-0126,Luz Helena Londoño Villa,0.3455
+Apto 13-0225,Ines Gomez De Granada,0.4862
+Apto 13-0226,Diana Carolina Londoño Cardenas,0.4862
+Apto 13-0325,Hernando De Jesus Cifuentes Giraldo,0.4862
+Apto 13-0326,Martha Lucia Gomez Aristizabal,0.5591
+Apto 13-0425,Jaime Bernardo Del Rio Botero,0.4792
+Apto 13-0426,Isabel Cristina Perez Perez,0.4792
+Apto 13-0525,Jenny Alessandra Fernandez,0.4792
+Apto 13-0526,Maria Sofia Moncada Velasquez,0.4862
+Apto 14-0140,Parroquia Santa Barbara,0.2548
+Apto 14-0141,Parroquia Santa Barbara,0.2548
+Apto 14-0240,Sergio Hernan Pareja Gomez,0.5591
+Apto 14-0241,Alba Rocio Monsalve Rojas,0.4792
+Apto 14-0341,Martha Libia Franco Lopez,0.4862
+Apto 14-0440,Judith Marleny Orozco Alvarez,0.5638
+Apto 14-0441,Octavio Restrepo Estrada,0.4862
+Apto 14-0540,Hernan De Jesus Guerra Fernandez,0.5833
+Apto 14-0541,Cesar Perez Rodriguez,0.5057
+Apto 15-0136,Parroquia De Santa Barbara,0.5218
+Apto 15-0236,Maria Mercedes Gomez Aristizabal,0.3761
+Apto 15-0237,Martha Cecilia Martinez Arias,0.4496
+Apto 15-0336,Myriam De Jesus Velez De Velez,0.3761
+Apto 15-0337,Maria Eugenia Gonzalez De Hoyos,0.38
+Apto 15-0436,Juan Carlos Gomez Aristizabal,0.3831
+Apto 15-0437,Carolina Garcia Arriola,0.38
+Apto 15-0536,Ana Catalina Escobar Duque,0.3844
+Apto 15-0537,Juan Guillermo Restrepo Londoño,0.3901
+Apto 16-0132,Parroquia De Santa Barbara,0.5316
+Apto 16-0232,Liliana Maria Velez Ortega,0.5638
+Apto 16-0233,Maria Nohemy Escudero Hernandez,0.5638
+Apto 16-0332,Carlos Arturo Villa Saldarriaga,0.4862
+Apto 16-0333,Dora De Las Mercedes Restrepo Arboleda,0.4792
+Apto 16-0432,Margarita Maria Escalante,0.4096
+Apto 16-0433,Yadit Jacqueline Gomez Jimenez,0.4096
+Apto 16-0532,Edison Perilla,0.4992
+Apto 16-0533,Diana Carolina Duque,0.5062
+Apto 17-0153,Yeimi Alexandra Suaza Quiñones,0.5951
+Apto 17-0253,Jose Arguiro Munera Builes,0.5057
+Apto 17-0353,Jose Luis Aguirre Murillo,0.4023
+Apto 17-0453,Juan Camilo Hernandez Giraldo,0.4719
+Apto 17-0553,Luis Guillermo Escobar Tamayo,0.5249
+Apto 18-0149,Rodrigo Uribe Restrepo,0.3385
+Apto 18-0150,Orlando Osorio Guerra,0.2619
+Apto 18-0151,Gloria Yaned Tobon Cataño,0.2619
+Apto 18-0152,Miguel Angel Rojo Roldan,0.2619
+Apto 18-0249,Maria Eugenia Maya Ardila,0.4081
+Apto 18-0250,Olga Stella Tabares Arcila,0.4161
+Apto 18-0251,Juan Guillermo Zuluaga Gonzalez,0.3385
+Apto 18-0252,Maria Clara Marquez Botero,0.3385
+Apto 18-0349,Manuel Jose Sanchez Bedoya,0.3385
+Apto 18-0350,Blanca Elvia Zapata Bustamante,0.2619
+Apto 18-0351,Jorge Orlando Gomez Gomez,0.2619
+Apto 18-0352,Lucia Velasquez Correa,0.4161
+Apto 18-0449,Juan De Jesus Valencia Lopez,0.3385
+Apto 18-0450,Leticia Arango De Cantor,0.3385
+Apto 18-0451,Angela María Lopez Agudelo,0.3385
+Apto 18-0452,Fabian Brand Orozco,0.3315
+Apto 18-0549,Beatriz Eugenia De Jesus Blair Trujillo,0.2619
+Apto 18-0550,Lucia Alzate Garces,0.3385
+Apto 18-0551,Sonia Betancurt Cano,0.2619
+Apto 18-0552,Luz Gabriela Cardona Chica,0.3385
+Apto 19-0155,Orfi Nelly Alzate Montoya,0.5196
+Apto 19-0156,Silvio Echaverri Echeverri,0.5196
+Apto 19-0255,Luz Daria Martinez De Agudelo,0.4695
+Apto 19-0256,Maria Mercedes Montoya De Arango,0.4695
+Apto 19-0355,Lina Claudia Londoño Zapata,0.4639
+Apto 19-0356,Alba Ruth Velasquez Ramirez,0.4639
+Apto 19-0455,Luz Nancy Correa Monroy,0.4213
+Apto 19-0456,Monica Maria Ortiz Ramirez,0.4193
+Apto 19-0555,Gloria Del Socorro Franco Betancur,0.4472
+Apto 19-0556,Manfred Lepiz Araya,0.4472
+Apto 20-0145,Maria Gertrudiz Uribe De Monroy,0.3385
+Apto 20-0146,Blanca Doris Ramirez Sosa,0.3385
+Apto 20-0147,Carlos Soto,0.3385
+Apto 20-0148,Jorge Humberto Restrepo Merino,0.3385
+Apto 20-0245,Luz Amparo Ramirez Ramirez,0.3385
+Apto 20-0246,Guillermo De Jesus Velez Perez,0.3385
+Apto 20-0247,Rodrigo Urrego Gonzalez,0.3315
+Apto 20-0248,Gloria Elena Arias Maldonado,0.3385
+Apto 20-0345,Luz Elena Zapata Orozco,0.3385
+Apto 20-0346,Maria Cristina Giraldo Noreña,0.2619
+Apto 20-0347,Esther Oliva Giraldo,0.3385
+Apto 20-0348,Teresita De Jesus Arias Osorio,0.3385
+Apto 20-0445,Luz Marina Ocampo,0.3385
+Apto 20-0446,Andres Felipe Taborda,0.3385
+Apto 20-0447,Jorge Enrique Restrepo Lopez,0.3315
+Apto 20-0448,Sandra Maria Sierra Villegas,0.3385
+Apto 20-0545,Blanca Nelly Londoño De Rua,0.3315
+Apto 20-0546,Oscar Valencia Gallego,0.3385
+Apto 20-0547,Alba Mery Muñoz Jaramillo,0.3385
+Apto 20-0548,Maria Eugenia Ruiz Hincapie,0.3315
+Apto 21-0143,Luis Mauricio Escobar Ortiz,0.5126
+Apto 21-0144,Martha Libia Franco Lopez,0.5126
+Apto 21-0243,Gladys Bernarda Zapata Lenys,0.5196
+Apto 21-0244,Maria Teresa Velasquez Paniagua,0.5196
+Apto 21-0343,Ivan De Jesus Gomez Ramirez,0.4639
+Apto 21-0344,Oscar Mauricio Alzate Velez,0.4569
+Apto 21-0443,Sonia De Tobon,0.4193
+Apto 21-0543,Omar De Jesús Villada Sánchez,0.4472
+Apto 21-0544,Leidy Diana Correa Zapata,0.4402
+par 108,Lucelly Robledo Aguirre,0.0697
+par 75,,0.0697
