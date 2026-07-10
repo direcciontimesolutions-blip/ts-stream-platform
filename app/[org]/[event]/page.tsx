@@ -42,26 +42,6 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   const { kicked } = await searchParams
   const supabase = createServiceRoleClient()
 
-  // Si ya hay sesión válida y no es un kicked redirect, ir directo al watch.
-  // Verificar también en BD que la sesión no fue invalidada (logout_at / kicked_at).
-  if (!kicked) {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('ts_stream_token')?.value
-    if (token) {
-      const payload = await verifyAttendeeToken(token)
-      if (payload) {
-        const { data: sessionCheck } = await supabase
-          .from('sessions')
-          .select('kicked_at, logout_at')
-          .eq('id', payload.sessionId)
-          .maybeSingle()
-        if (sessionCheck && !sessionCheck.kicked_at && !sessionCheck.logout_at) {
-          redirect(`/${org}/${event}/watch`)
-        }
-      }
-    }
-  }
-
   // 1. Buscar organizacion por slug
   const { data: organization, error: orgError } = await supabase
     .from('organizations')
@@ -83,6 +63,26 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
 
   if (eventError || !eventData) {
     notFound()
+  }
+
+  // Si ya hay sesión válida, el evento está live, y no es un kicked redirect → ir al watch.
+  // Solo redirigir si el evento está live para evitar loop cuando el evento termina.
+  if (!kicked && eventData.status === 'live') {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('ts_stream_token')?.value
+    if (token) {
+      const payload = await verifyAttendeeToken(token)
+      if (payload) {
+        const { data: sessionCheck } = await supabase
+          .from('sessions')
+          .select('kicked_at, logout_at')
+          .eq('id', payload.sessionId)
+          .maybeSingle()
+        if (sessionCheck && !sessionCheck.kicked_at && !sessionCheck.logout_at) {
+          redirect(`/${org}/${event}/watch`)
+        }
+      }
+    }
   }
 
   const branding = (eventData.branding ?? {}) as {
