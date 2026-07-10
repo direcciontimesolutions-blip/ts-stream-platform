@@ -5,7 +5,7 @@ import { notFound, redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import type { Metadata } from 'next'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { verifyAttendeeToken, ATTENDEE_COOKIE } from '@/lib/auth'
+import { verifyAttendeeToken } from '@/lib/auth'
 import BrandedLayout from '@/components/BrandedLayout'
 import EventPlayer from '@/components/EventPlayer'
 import type { Organization } from '@/types'
@@ -48,24 +48,19 @@ export default async function WatchPage({ params }: PageProps) {
     .eq('id', jwtPayload.sessionId)
     .single()
 
+  // Sesión kickeada o cerrada — redirigir sin tocar cookies server-side
+  // (Next.js RSC no permite mutar cookies; el borrado lo maneja el API route de logout)
   if (sessionRow?.kicked_at) {
-    cookieStore.delete(ATTENDEE_COOKIE.name)
     redirect(`/${org}/${event}?kicked=1`)
   }
 
-  // Si otra sesión tomó el control (logout_at seteado por un login posterior), redirigir a login
   if (sessionRow?.logout_at) {
-    cookieStore.delete(ATTENDEE_COOKIE.name)
     redirect(`/${org}/${event}`)
   }
 
-  // Si el heartbeat lleva más de 5 min sin actualizar, la sesión se considera abandonada.
-  // Forzar re-login para evitar que un browser reabierto reactive una sesión
-  // que otro dispositivo pudo haber tomado mientras estaba cerrado.
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const lastActivity = sessionRow?.last_ping_at ?? sessionRow?.login_at
   if (!lastActivity || lastActivity < fiveMinutesAgo) {
-    cookieStore.delete(ATTENDEE_COOKIE.name)
     redirect(`/${org}/${event}`)
   }
 
