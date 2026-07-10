@@ -378,15 +378,13 @@ export default function EventDetailPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {chatTab && chatMessages.length > 0 && (
-                <button
-                  onClick={handleClearChat}
-                  disabled={chatClearing}
-                  className="text-xs text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-40"
-                >
-                  {chatClearing ? 'Limpiando...' : 'Limpiar chat'}
-                </button>
-              )}
+              <button
+                onClick={handleClearChat}
+                disabled={chatClearing}
+                className="text-xs text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-40"
+              >
+                {chatClearing ? 'Limpiando...' : 'Limpiar chat'}
+              </button>
               <button
                 onClick={() => { setChatTab((v) => !v); if (!chatTab) fetchChatMessages() }}
                 className="text-xs text-gray-400 hover:text-white transition-colors"
