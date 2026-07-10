@@ -3,7 +3,7 @@
 export type OrgPlan = 'free' | 'paid'
 export type OrgManagementMode = 'ts_solo' | 'hybrid' | 'autonomous'
 export type EventStatus = 'draft' | 'live' | 'ended'
-export type StreamingTier = 'youtube' | 'cloudflare'
+export type StreamingTier = 'youtube' | 'cloudflare' | 'teams'
 export type AttendeeRole = 'attendee' | 'vip' | 'moderator'
 export type AdminRole = 'ts_admin' | 'client_admin' | 'ai_agent'
 

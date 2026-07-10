@@ -9,7 +9,7 @@ interface EventPlayerProps {
   sessionId: string
   eventId: string
   youtubeUrl: string | null
-  streamingTier: 'youtube' | 'cloudflare'
+  streamingTier: 'youtube' | 'cloudflare' | 'teams'
   attendeeName: string
   chatEnabled: boolean
   org: string
@@ -120,10 +120,12 @@ export default function EventPlayer({
     }
   }
 
-  const videoId = youtubeUrl ? extractYouTubeVideoId(youtubeUrl) : null
+  const isTeams = youtubeUrl?.includes('teams.microsoft.com') ?? false
+  const videoId = (!isTeams && youtubeUrl) ? extractYouTubeVideoId(youtubeUrl) : null
   const embedUrl = videoId
     ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`
     : null
+  const resolvedTier = isTeams ? 'teams' : streamingTier
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -168,7 +170,7 @@ export default function EventPlayer({
       <div className="flex flex-1 min-h-0">
         {/* Player */}
         <div className="flex-1 flex items-center justify-center bg-black p-4 sm:p-8 min-w-0">
-          {streamingTier === 'youtube' && embedUrl ? (
+          {resolvedTier === 'youtube' && embedUrl ? (
             <div
               className="w-full"
               style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
@@ -182,7 +184,23 @@ export default function EventPlayer({
                 />
               </div>
             </div>
-          ) : streamingTier === 'cloudflare' ? (
+          ) : resolvedTier === 'teams' && youtubeUrl ? (
+            <div
+              className="w-full"
+              style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
+            >
+              <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
+                <iframe
+                  src={youtubeUrl}
+                  title="Transmision en vivo del evento"
+                  allow="autoplay; camera; microphone"
+                  allowFullScreen
+                  frameBorder={0}
+                  scrolling="no"
+                />
+              </div>
+            </div>
+          ) : resolvedTier === 'cloudflare' ? (
             <div className="text-center space-y-3">
               <p className="text-white/60 text-lg">Cloudflare Stream disponible en Fase 2</p>
               <p className="text-white/30 text-sm">Contacta a Time Solutions para activarlo</p>

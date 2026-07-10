@@ -22,7 +22,7 @@ export default function EventForm({ organizations }: EventFormProps) {
     description: '',
     start_at: '',
     end_at: '',
-    streaming_tier: 'youtube' as 'youtube' | 'cloudflare',
+    streaming_tier: 'youtube' as 'youtube' | 'cloudflare' | 'teams',
     youtube_url: '',
     primary_color: '#7C3AED',
     secondary_color: '#FFFFFF',
@@ -221,7 +221,7 @@ export default function EventForm({ organizations }: EventFormProps) {
 
         <div>
           <span className="block text-sm font-medium text-white/80 mb-2">Tier de streaming</span>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -232,6 +232,17 @@ export default function EventForm({ organizations }: EventFormProps) {
                 className="accent-purple-500"
               />
               <span className="text-sm text-white/80">YouTube</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="streaming_tier"
+                value="teams"
+                checked={form.streaming_tier === 'teams'}
+                onChange={handleChange}
+                className="accent-purple-500"
+              />
+              <span className="text-sm text-white/80">Microsoft Teams</span>
             </label>
             <label className="flex items-center gap-2 cursor-not-allowed opacity-40" title="Disponible en Fase 2">
               <input
@@ -263,6 +274,24 @@ export default function EventForm({ organizations }: EventFormProps) {
               className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
               placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..."
             />
+          </div>
+        )}
+
+        {form.streaming_tier === 'teams' && (
+          <div>
+            <label htmlFor="youtube_url" className="block text-sm font-medium text-white/80 mb-1.5">
+              URL del iframe de Teams
+            </label>
+            <input
+              id="youtube_url"
+              name="youtube_url"
+              type="url"
+              value={form.youtube_url}
+              onChange={handleChange}
+              className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+              placeholder="https://teams.microsoft.com/convene/townhall?eventId=..."
+            />
+            <p className="text-white/30 text-xs mt-1">Pega solo la URL del src del iframe (sin las etiquetas HTML)</p>
           </div>
         )}
       </fieldset>
