@@ -78,6 +78,27 @@ export default function EventDetailPage() {
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [deletingAttendeeId, setDeletingAttendeeId] = useState<string | null>(null)
 
+  // Polls
+  interface PollOption { id: string; text: string }
+  interface Poll {
+    id: string; question: string; type: string; options: PollOption[]
+    status: string; show_results: boolean; created_at: string
+  }
+  interface PollTallyOption { id: string; text: string; count: number; pct: number }
+  interface PollTally { type: string; total: number; options?: PollTallyOption[]; avg?: number; distribution?: Record<number,number>; responses?: string[] }
+
+  const [showPollsTab, setShowPollsTab] = useState(false)
+  const [polls, setPolls] = useState<Poll[]>([])
+  const [pollsLoading, setPollsLoading] = useState(false)
+  const [pollLaunching, setPollLaunching] = useState<string | null>(null)
+  const [pollDeleting, setPollDeleting] = useState<string | null>(null)
+  const [pollTallies, setPollTallies] = useState<Record<string, PollTally>>({})
+  const [newPollQ, setNewPollQ] = useState('')
+  const [newPollType, setNewPollType] = useState<'multiple_choice' | 'open' | 'rating'>('multiple_choice')
+  const [newPollOptions, setNewPollOptions] = useState<string[]>(['', ''])
+  const [newPollShowResults, setNewPollShowResults] = useState(true)
+  const [creatingPoll, setCreatingPoll] = useState(false)
+
   const fetchEvent = useCallback(async () => {
     try {
       const [eventRes, attendeesRes] = await Promise.all([
@@ -106,9 +127,25 @@ export default function EventDetailPage() {
     } catch {}
   }, [eventId])
 
+  const fetchPolls = useCallback(async () => {
+    setPollsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/polls`)
+      if (res.ok) setPolls(await res.json())
+    } finally { setPollsLoading(false) }
+  }, [eventId])
+
+  const fetchPollTally = useCallback(async (pollId: string) => {
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/polls/${pollId}/responses`)
+      if (res.ok) { const data = await res.json(); setPollTallies((prev) => ({ ...prev, [pollId]: data })) }
+    } catch {}
+  }, [eventId])
+
   useEffect(() => { fetchEvent() }, [fetchEvent])
   useEffect(() => { if (chatTab) fetchChatMessages() }, [chatTab, fetchChatMessages])
   useEffect(() => { if (showModeratorsTab) fetchModerators() }, [showModeratorsTab, fetchModerators])
+  useEffect(() => { if (showPollsTab) fetchPolls() }, [showPollsTab, fetchPolls])
 
   async function handleStatusChange() {
     if (!event) return
@@ -238,6 +275,56 @@ export default function EventDetailPage() {
       await fetch(`/api/admin/events/${eventId}/attendees/${attendeeId}`, { method: 'DELETE' })
       setAttendees((prev) => prev.filter((a) => a.id !== attendeeId))
     } finally { setDeletingAttendeeId(null) }
+  }
+
+  async function handleCreatePoll(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newPollQ.trim() || creatingPoll) return
+    setCreatingPoll(true)
+    try {
+      const options = newPollType === 'multiple_choice'
+        ? newPollOptions.filter((o) => o.trim()).map((text, i) => ({ id: `opt_${i}`, text: text.trim() }))
+        : []
+      const res = await fetch(`/api/admin/events/${eventId}/polls`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: newPollQ, type: newPollType, options, show_results: newPollShowResults }),
+      })
+      if (res.ok) {
+        setNewPollQ('')
+        setNewPollOptions(['', ''])
+        setNewPollType('multiple_choice')
+        fetchPolls()
+      }
+    } finally { setCreatingPoll(false) }
+  }
+
+  async function handlePollStatusChange(pollId: string, status: string) {
+    if (pollLaunching) return
+    setPollLaunching(pollId)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/polls/${pollId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(err.error ?? 'Error al cambiar estado.')
+      } else {
+        if (status === 'closed') fetchPollTally(pollId)
+        fetchPolls()
+      }
+    } finally { setPollLaunching(null) }
+  }
+
+  async function handleDeletePoll(pollId: string) {
+    if (pollDeleting || !confirm('¿Eliminar este poll?')) return
+    setPollDeleting(pollId)
+    try {
+      await fetch(`/api/admin/events/${eventId}/polls/${pollId}`, { method: 'DELETE' })
+      setPolls((prev) => prev.filter((p) => p.id !== pollId))
+    } finally { setPollDeleting(null) }
   }
 
   function handleImportSuccess(result: ImportResult) {
@@ -569,6 +656,138 @@ export default function EventDetailPage() {
                             </>
                           )}
                         </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Polls interactivos */}
+        <section className="bg-gray-900 border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Polls interactivos</h2>
+              <p className="text-xs text-gray-600 mt-0.5">Lanza encuestas en vivo para los asistentes</p>
+            </div>
+            <button onClick={() => setShowPollsTab((v) => !v)}
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
+              {showPollsTab ? 'Cerrar' : 'Gestionar polls'}
+            </button>
+          </div>
+          {showPollsTab && (
+            <div className="p-5 space-y-6">
+              <form onSubmit={handleCreatePoll} className="bg-gray-800/50 rounded-xl p-4 space-y-4">
+                <p className="text-sm font-semibold text-white">Nuevo poll</p>
+                <input type="text" value={newPollQ} onChange={(e) => setNewPollQ(e.target.value)}
+                  placeholder="Escribe la pregunta..." className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50"
+                  maxLength={300} required />
+                <div className="flex gap-2">
+                  {(['multiple_choice', 'open', 'rating'] as const).map((t) => (
+                    <button key={t} type="button" onClick={() => setNewPollType(t)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${newPollType === t ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}>
+                      {t === 'multiple_choice' ? 'Selección múltiple' : t === 'open' ? 'Pregunta abierta' : 'Calificación 1-5'}
+                    </button>
+                  ))}
+                </div>
+                {newPollType === 'multiple_choice' && (
+                  <div className="space-y-2">
+                    {newPollOptions.map((opt, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input type="text" value={opt} onChange={(e) => setNewPollOptions((prev) => prev.map((o, j) => j === i ? e.target.value : o))}
+                          placeholder={`Opción ${i + 1}`} className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-purple-500/50" maxLength={100} />
+                        {newPollOptions.length > 2 && (
+                          <button type="button" onClick={() => setNewPollOptions((prev) => prev.filter((_, j) => j !== i))}
+                            className="text-gray-600 hover:text-red-400 transition-colors px-2">✕</button>
+                        )}
+                      </div>
+                    ))}
+                    {newPollOptions.length < 5 && (
+                      <button type="button" onClick={() => setNewPollOptions((prev) => [...prev, ''])}
+                        className="text-xs text-purple-400 hover:text-purple-300 transition-colors">+ Agregar opción</button>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={newPollShowResults} onChange={(e) => setNewPollShowResults(e.target.checked)} className="accent-purple-500" />
+                    <span className="text-xs text-gray-400">Mostrar resultados a asistentes al votar</span>
+                  </label>
+                  <button type="submit" disabled={creatingPoll || !newPollQ.trim()}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
+                    {creatingPoll ? 'Creando...' : 'Crear poll'}
+                  </button>
+                </div>
+              </form>
+              {pollsLoading ? (
+                <p className="text-gray-500 text-sm text-center py-4">Cargando polls...</p>
+              ) : polls.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-4">No hay polls creados aún.</p>
+              ) : (
+                <div className="space-y-3">
+                  {polls.map((poll) => {
+                    const tally = pollTallies[poll.id]
+                    return (
+                      <div key={poll.id} className={`rounded-xl border p-4 space-y-3 ${poll.status === 'active' ? 'border-purple-500/40 bg-purple-500/10' : 'border-white/10 bg-gray-800/30'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${poll.status === 'active' ? 'bg-purple-500/30 text-purple-300' : poll.status === 'closed' ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-gray-400'}`}>
+                                {poll.status === 'active' ? '● En vivo' : poll.status === 'closed' ? 'Cerrado' : 'Borrador'}
+                              </span>
+                              <span className="text-xs text-gray-600">{poll.type === 'multiple_choice' ? 'Selección' : poll.type === 'open' ? 'Abierta' : 'Rating'}</span>
+                            </div>
+                            <p className="text-sm text-white font-medium leading-snug">{poll.question}</p>
+                            {poll.type === 'multiple_choice' && <p className="text-xs text-gray-600 mt-1">{poll.options.length} opciones</p>}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {poll.status === 'draft' && (
+                              <button onClick={() => handlePollStatusChange(poll.id, 'active')} disabled={!!pollLaunching}
+                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">
+                                {pollLaunching === poll.id ? '...' : 'Lanzar'}
+                              </button>
+                            )}
+                            {poll.status === 'active' && (
+                              <button onClick={() => handlePollStatusChange(poll.id, 'closed')} disabled={!!pollLaunching}
+                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">
+                                {pollLaunching === poll.id ? '...' : 'Cerrar poll'}
+                              </button>
+                            )}
+                            {poll.status === 'closed' && !tally && (
+                              <button onClick={() => fetchPollTally(poll.id)}
+                                className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-medium rounded-lg transition-colors">
+                                Ver resultados
+                              </button>
+                            )}
+                            {poll.status !== 'active' && (
+                              <button onClick={() => handleDeletePoll(poll.id)} disabled={pollDeleting === poll.id}
+                                className="text-red-400/40 hover:text-red-400 transition-colors text-xs px-2" title="Eliminar poll">
+                                {pollDeleting === poll.id ? '...' : '✕'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {tally && (
+                          <div className="border-t border-white/10 pt-3 space-y-2">
+                            <p className="text-xs text-gray-500 font-medium">{tally.total} respuestas</p>
+                            {tally.type === 'multiple_choice' && tally.options?.map((opt) => (
+                              <div key={opt.id}>
+                                <div className="flex justify-between text-xs text-gray-400 mb-1"><span>{opt.text}</span><span>{opt.pct}%</span></div>
+                                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-500 rounded-full" style={{ width: `${opt.pct}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                            {tally.type === 'rating' && <p className="text-2xl font-bold text-white">{tally.avg} <span className="text-sm font-normal text-gray-400">/ 5</span></p>}
+                            {tally.type === 'open' && Array.isArray(tally.responses) && (
+                              <div className="space-y-1 max-h-40 overflow-y-auto">
+                                {tally.responses.map((r, i) => <p key={i} className="text-xs text-gray-300 bg-white/5 px-3 py-1.5 rounded-lg">{r}</p>)}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })}

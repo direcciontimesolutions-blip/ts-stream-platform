@@ -1,9 +1,26 @@
 'use client'
-// components/EventPlayer.tsx — YouTube embed + heartbeat + chat + kick detection
+// components/EventPlayer.tsx — YouTube embed + heartbeat + chat + kick detection + polls
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { extractYouTubeVideoId } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import type { Message } from '@/types'
+
+interface Poll {
+  id: string
+  question: string
+  type: 'multiple_choice' | 'open' | 'rating'
+  options: { id: string; text: string }[]
+  show_results: boolean
+}
+
+interface TallyOption { id: string; text: string; count: number; pct: number }
+interface Tally {
+  type: string
+  total: number
+  options?: TallyOption[]
+  avg?: number
+}
 
 interface EventPlayerProps {
   sessionId: string
@@ -33,6 +50,15 @@ export default function EventPlayer({
   const [sending, setSending] = useState(false)
   const [chatActive, setChatActive] = useState(chatEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Polls
+  const [activePoll, setActivePoll] = useState<Poll | null>(null)
+  const [pollAnswered, setPollAnswered] = useState(false)
+  const [pollTally, setPollTally] = useState<Tally | null>(null)
+  const [pollSubmitting, setPollSubmitting] = useState(false)
+  const [selectedOption, setSelectedOption] = useState<string>('')
+  const [openAnswer, setOpenAnswer] = useState<string>('')
+  const [ratingAnswer, setRatingAnswer] = useState<number>(0)
 
   const endSession = useCallback(async () => {
     if (endedRef.current) return
@@ -95,6 +121,79 @@ export default function EventPlayer({
     }
   }, [messages, chatOpen])
 
+  // Polls — carga inicial + Supabase Realtime
+  useEffect(() => {
+    let active = true
+
+    async function loadActivePoll() {
+      try {
+        const res = await fetch(`/api/events/${eventId}/polls/active`)
+        if (!res.ok || !active) return
+        const data = await res.json()
+        if (data.poll) {
+          setActivePoll(data.poll)
+          setPollAnswered(data.already_responded ?? false)
+        }
+      } catch {}
+    }
+
+    loadActivePoll()
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`poll:${eventId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'polls', filter: `event_id=eq.${eventId}` },
+        (payload) => {
+          if (!active) return
+          const row = payload.new as { status?: string } | null
+          if (!row) return
+          if (row.status === 'active') {
+            setActivePoll(row as unknown as Poll)
+            setPollAnswered(false)
+            setPollTally(null)
+            setSelectedOption('')
+            setOpenAnswer('')
+            setRatingAnswer(0)
+          } else {
+            setActivePoll(null)
+            setPollTally(null)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [eventId])
+
+  async function handlePollSubmit() {
+    if (!activePoll || pollSubmitting) return
+    setPollSubmitting(true)
+    try {
+      let body: Record<string, unknown> = {}
+      if (activePoll.type === 'multiple_choice') body = { option_id: selectedOption }
+      else if (activePoll.type === 'open') body = { text: openAnswer }
+      else body = { rating: ratingAnswer }
+
+      const res = await fetch(`/api/events/${eventId}/polls/${activePoll.id}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPollAnswered(true)
+        if (data.tally) setPollTally(data.tally)
+      }
+    } catch {} finally {
+      setPollSubmitting(false)
+    }
+  }
+
   async function handleLogout() {
     await endSession()
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -127,8 +226,13 @@ export default function EventPlayer({
     : null
   const resolvedTier = isTeams ? 'teams' : streamingTier
 
+  const canSubmitPoll =
+    activePoll?.type === 'multiple_choice' ? !!selectedOption :
+    activePoll?.type === 'open' ? openAnswer.trim().length > 0 :
+    activePoll?.type === 'rating' ? ratingAnswer > 0 : false
+
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 relative">
       {/* Barra superior */}
       <div className="flex items-center justify-between px-6 py-3 bg-black/40 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -289,6 +393,115 @@ export default function EventPlayer({
           </div>
         )}
       </div>
+
+      {/* Overlay de poll activo */}
+      {activePoll && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-40 p-4">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center gap-3">
+              <span className="flex h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
+              <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">
+                {activePoll.type === 'multiple_choice' ? 'Encuesta' : activePoll.type === 'rating' ? 'Calificación' : 'Pregunta abierta'}
+              </span>
+            </div>
+
+            <div className="px-6 py-5">
+              <p className="text-white font-semibold text-base leading-snug mb-5">{activePoll.question}</p>
+
+              {!pollAnswered ? (
+                <>
+                  {activePoll.type === 'multiple_choice' && (
+                    <div className="space-y-2">
+                      {activePoll.options.map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => setSelectedOption(opt.id)}
+                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all ${
+                            selectedOption === opt.id
+                              ? 'border-purple-500 bg-purple-500/20 text-white'
+                              : 'border-white/10 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
+                          }`}
+                        >
+                          {opt.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {activePoll.type === 'open' && (
+                    <textarea
+                      value={openAnswer}
+                      onChange={(e) => setOpenAnswer(e.target.value)}
+                      maxLength={300}
+                      rows={3}
+                      placeholder="Escribe tu respuesta aquí..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 resize-none"
+                    />
+                  )}
+
+                  {activePoll.type === 'rating' && (
+                    <div className="flex justify-center gap-3 py-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setRatingAnswer(n)}
+                          className={`text-3xl transition-all ${ratingAnswer >= n ? 'opacity-100 scale-110' : 'opacity-30 hover:opacity-60'}`}
+                          aria-label={`${n} estrella${n > 1 ? 's' : ''}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handlePollSubmit}
+                    disabled={!canSubmitPoll || pollSubmitting}
+                    className="mt-5 w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm py-3 rounded-xl transition-colors"
+                  >
+                    {pollSubmitting ? 'Enviando…' : 'Enviar respuesta'}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-green-400 text-sm font-medium text-center">✓ Respuesta registrada</p>
+
+                  {pollTally && activePoll.type === 'multiple_choice' && pollTally.options && (
+                    <div className="space-y-2">
+                      {pollTally.options.map((opt) => (
+                        <div key={opt.id}>
+                          <div className="flex justify-between text-xs text-white/70 mb-1">
+                            <span>{opt.text}</span>
+                            <span>{opt.pct}%</span>
+                          </div>
+                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                              style={{ width: `${opt.pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      <p className="text-xs text-white/40 text-center">{pollTally.total} respuestas</p>
+                    </div>
+                  )}
+
+                  {pollTally && activePoll.type === 'rating' && (
+                    <div className="text-center space-y-1">
+                      <p className="text-4xl font-bold text-white">{pollTally.avg}</p>
+                      <p className="text-xs text-white/40">{pollTally.total} respuestas · promedio de 5</p>
+                    </div>
+                  )}
+
+                  {activePoll.type === 'open' && !pollTally && (
+                    <p className="text-white/50 text-sm text-center">Gracias por tu respuesta.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
