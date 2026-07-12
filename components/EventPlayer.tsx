@@ -132,7 +132,11 @@ export default function EventPlayer({
         if (!res.ok || !active) return
         const data = await res.json()
         if (data.poll) {
-          if (data.poll.id === dismissedPollIdRef.current) return
+          if (data.poll.id === dismissedPollIdRef.current) {
+            // Poll descartado — solo re-mostrar si el admin está haciendo broadcast de resultados
+            if (!data.poll.show_results) return
+            dismissedPollIdRef.current = null  // override: el admin quiere que todos vean
+          }
           setActivePoll((prev) => {
             if (!prev || prev.id !== data.poll.id) {
               setPollAnswered(data.already_responded ?? false)
@@ -142,7 +146,6 @@ export default function EventPlayer({
             }
             return data.poll
           })
-          // Siempre actualizar tally fuera del updater para garantizar el re-render
           if (data.tally !== undefined) setPollTally(data.tally ?? null)
         } else {
           setActivePoll(null)
