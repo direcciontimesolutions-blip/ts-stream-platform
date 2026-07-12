@@ -408,6 +408,7 @@ export default function AssemblyWatchPage() {
   const openMotions = motions.filter(m => m.status === 'open')
   const hasRepresentation = attendee.represented_units.length > 0
   const hasStream = !!asm.stream_url
+  const isTeams = hasStream && asm.stream_url!.includes('teams.microsoft.com')
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
@@ -468,7 +469,9 @@ export default function AssemblyWatchPage() {
                 <iframe
                   src={toEmbedUrl(asm.stream_url!)}
                   className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow={isTeams
+                    ? 'autoplay; camera; microphone; fullscreen'
+                    : 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'}
                   allowFullScreen
                 />
               </div>
