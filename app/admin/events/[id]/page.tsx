@@ -97,7 +97,7 @@ export default function EventDetailPage() {
   const [newPollQ, setNewPollQ] = useState('')
   const [newPollType, setNewPollType] = useState<'multiple_choice' | 'open' | 'rating'>('multiple_choice')
   const [newPollOptions, setNewPollOptions] = useState<string[]>(['', ''])
-  const [newPollShowResults, setNewPollShowResults] = useState(true)
+  const [newPollShowResults, setNewPollShowResults] = useState(false)
   const [creatingPoll, setCreatingPoll] = useState(false)
 
   const fetchEvent = useCallback(async () => {
@@ -727,7 +727,7 @@ export default function EventDetailPage() {
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={newPollShowResults} onChange={(e) => setNewPollShowResults(e.target.checked)} className="accent-purple-500" />
-                    <span className="text-xs text-gray-400">Mostrar resultados a asistentes al votar</span>
+                    <span className="text-xs text-gray-400">Mostrar resultados en vivo al lanzar</span>
                   </label>
                   <button type="submit" disabled={creatingPoll || !newPollQ.trim()}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors">
