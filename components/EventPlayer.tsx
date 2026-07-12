@@ -426,10 +426,10 @@ export default function EventPlayer({
         )}
       </div>
 
-      {/* Overlay de poll activo */}
+      {/* Card de poll — esquina inferior derecha */}
       {activePoll && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-40 p-4">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="absolute bottom-4 right-4 z-40 w-80 max-w-[calc(100%-2rem)]">
+          <div className="bg-gray-900/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm">
             <div className="px-6 py-4 border-b border-white/10 flex items-center gap-3">
               <span className="flex h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
               <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">
