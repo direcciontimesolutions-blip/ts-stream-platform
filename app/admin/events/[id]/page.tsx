@@ -91,6 +91,7 @@ export default function EventDetailPage() {
   const [polls, setPolls] = useState<Poll[]>([])
   const [pollsLoading, setPollsLoading] = useState(false)
   const [pollLaunching, setPollLaunching] = useState<string | null>(null)
+  const [pollTogglingResults, setPollTogglingResults] = useState<string | null>(null)
   const [pollDeleting, setPollDeleting] = useState<string | null>(null)
   const [pollTallies, setPollTallies] = useState<Record<string, PollTally>>({})
   const [newPollQ, setNewPollQ] = useState('')
@@ -316,6 +317,19 @@ export default function EventDetailPage() {
         fetchPolls()
       }
     } finally { setPollLaunching(null) }
+  }
+
+  async function handleToggleShowResults(pollId: string, current: boolean) {
+    if (pollTogglingResults) return
+    setPollTogglingResults(pollId)
+    try {
+      await fetch(`/api/admin/events/${eventId}/polls/${pollId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show_results: !current }),
+      })
+      fetchPolls()
+    } finally { setPollTogglingResults(null) }
   }
 
   async function handleDeletePoll(pollId: string) {
@@ -750,10 +764,23 @@ export default function EventDetailPage() {
                               </button>
                             )}
                             {poll.status === 'active' && (
-                              <button onClick={() => handlePollStatusChange(poll.id, 'closed')} disabled={!!pollLaunching}
-                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">
-                                {pollLaunching === poll.id ? '...' : 'Cerrar poll'}
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleToggleShowResults(poll.id, poll.show_results)}
+                                  disabled={!!pollTogglingResults}
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-40 ${
+                                    poll.show_results
+                                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                                      : 'bg-white/10 hover:bg-white/15 text-gray-300'
+                                  }`}
+                                >
+                                  {pollTogglingResults === poll.id ? '...' : poll.show_results ? '📊 Ocultar resultados' : '📊 Mostrar resultados'}
+                                </button>
+                                <button onClick={() => handlePollStatusChange(poll.id, 'closed')} disabled={!!pollLaunching}
+                                  className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">
+                                  {pollLaunching === poll.id ? '...' : 'Cerrar poll'}
+                                </button>
+                              </>
                             )}
                             {poll.status === 'closed' && !tally && (
                               <button onClick={() => fetchPollTally(poll.id)}

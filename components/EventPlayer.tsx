@@ -136,10 +136,12 @@ export default function EventPlayer({
           setActivePoll((prev) => {
             if (!prev || prev.id !== data.poll.id) {
               setPollAnswered(data.already_responded ?? false)
-              setPollTally(null)
+              setPollTally(data.tally ?? null)
               setSelectedOption('')
               setOpenAnswer('')
               setRatingAnswer(0)
+            } else {
+              if (data.tally) setPollTally(data.tally)
             }
             return data.poll
           })
@@ -164,7 +166,7 @@ export default function EventPlayer({
           const row = payload.new as { status?: string } | null
           if (!row) return
           if (row.status === 'active') {
-            const incoming = row as unknown as Poll
+            const incoming = row as unknown as Poll & { show_results: boolean }
             if (incoming.id === dismissedPollIdRef.current) return
             setActivePoll((prev) => {
               if (!prev || prev.id !== incoming.id) {
@@ -176,6 +178,13 @@ export default function EventPlayer({
               }
               return incoming
             })
+            // Si el admin acaba de mostrar resultados, fetch inmediato para no esperar 5s
+            if (incoming.show_results) {
+              fetch(`/api/events/${eventId}/polls/active`)
+                .then((r) => r.json())
+                .then((d) => { if (active && d.tally) setPollTally(d.tally) })
+                .catch(() => {})
+            }
           } else {
             setActivePoll(null)
             setPollTally(null)
@@ -429,7 +438,7 @@ export default function EventPlayer({
             <div className="px-6 py-5">
               <p className="text-white font-semibold text-base leading-snug mb-5">{activePoll.question}</p>
 
-              {!pollAnswered ? (
+              {!pollAnswered && !(activePoll.show_results && pollTally) ? (
                 <>
                   {activePoll.type === 'multiple_choice' && (
                     <div className="space-y-2">
@@ -485,7 +494,10 @@ export default function EventPlayer({
                 </>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-green-400 text-sm font-medium text-center">✓ Respuesta registrada</p>
+                  {pollAnswered
+                  ? <p className="text-green-400 text-sm font-medium text-center">✓ Respuesta registrada</p>
+                  : <p className="text-purple-400 text-sm font-medium text-center">📊 Resultados en vivo</p>
+                }
 
                   {pollTally && activePoll.type === 'multiple_choice' && pollTally.options && (
                     <div className="space-y-2">
