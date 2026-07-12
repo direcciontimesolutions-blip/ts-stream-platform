@@ -148,6 +148,15 @@ export default function EventDetailPage() {
   useEffect(() => { if (showModeratorsTab) fetchModerators() }, [showModeratorsTab, fetchModerators])
   useEffect(() => { if (showPollsTab) fetchPolls() }, [showPollsTab, fetchPolls])
 
+  // Auto-refresh tally para polls activos con show_results habilitado
+  useEffect(() => {
+    if (!showPollsTab) return
+    const activePollWithResults = polls.find((p) => p.status === 'active' && p.show_results)
+    if (!activePollWithResults) return
+    const interval = setInterval(() => fetchPollTally(activePollWithResults.id), 8_000)
+    return () => clearInterval(interval)
+  }, [showPollsTab, polls, fetchPollTally])
+
   async function handleStatusChange() {
     if (!event) return
     const transition = STATUS_TRANSITIONS[event.status]
@@ -323,12 +332,15 @@ export default function EventDetailPage() {
     if (pollTogglingResults) return
     setPollTogglingResults(pollId)
     try {
-      await fetch(`/api/admin/events/${eventId}/polls/${pollId}`, {
+      const res = await fetch(`/api/admin/events/${eventId}/polls/${pollId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ show_results: !current }),
       })
-      fetchPolls()
+      if (res.ok) {
+        fetchPolls()
+        if (!current) fetchPollTally(pollId)
+      }
     } finally { setPollTogglingResults(null) }
   }
 
