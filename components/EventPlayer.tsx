@@ -121,23 +121,35 @@ export default function EventPlayer({
     }
   }, [messages, chatOpen])
 
-  // Polls — carga inicial + Supabase Realtime
+  // Polls — polling cada 5s (fallback) + Supabase Realtime (instantáneo cuando funciona)
   useEffect(() => {
     let active = true
 
-    async function loadActivePoll() {
+    async function checkActivePoll() {
       try {
         const res = await fetch(`/api/events/${eventId}/polls/active`)
         if (!res.ok || !active) return
         const data = await res.json()
         if (data.poll) {
-          setActivePoll(data.poll)
-          setPollAnswered(data.already_responded ?? false)
+          setActivePoll((prev) => {
+            if (!prev || prev.id !== data.poll.id) {
+              setPollAnswered(data.already_responded ?? false)
+              setPollTally(null)
+              setSelectedOption('')
+              setOpenAnswer('')
+              setRatingAnswer(0)
+            }
+            return data.poll
+          })
+        } else {
+          setActivePoll(null)
+          setPollTally(null)
         }
       } catch {}
     }
 
-    loadActivePoll()
+    checkActivePoll()
+    const pollInterval = setInterval(checkActivePoll, 5_000)
 
     const supabase = createClient()
     const channel = supabase
@@ -150,12 +162,17 @@ export default function EventPlayer({
           const row = payload.new as { status?: string } | null
           if (!row) return
           if (row.status === 'active') {
-            setActivePoll(row as unknown as Poll)
-            setPollAnswered(false)
-            setPollTally(null)
-            setSelectedOption('')
-            setOpenAnswer('')
-            setRatingAnswer(0)
+            setActivePoll((prev) => {
+              const incoming = row as unknown as Poll
+              if (!prev || prev.id !== incoming.id) {
+                setPollAnswered(false)
+                setPollTally(null)
+                setSelectedOption('')
+                setOpenAnswer('')
+                setRatingAnswer(0)
+              }
+              return incoming
+            })
           } else {
             setActivePoll(null)
             setPollTally(null)
@@ -166,6 +183,7 @@ export default function EventPlayer({
 
     return () => {
       active = false
+      clearInterval(pollInterval)
       supabase.removeChannel(channel)
     }
   }, [eventId])
@@ -496,6 +514,13 @@ export default function EventPlayer({
                   {activePoll.type === 'open' && !pollTally && (
                     <p className="text-white/50 text-sm text-center">Gracias por tu respuesta.</p>
                   )}
+
+                  <button
+                    onClick={() => { setActivePoll(null); setPollTally(null) }}
+                    className="mt-4 w-full text-white/50 hover:text-white/80 text-sm py-2 rounded-xl transition-colors hover:bg-white/5"
+                  >
+                    Cerrar
+                  </button>
                 </div>
               )}
             </div>
