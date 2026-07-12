@@ -128,7 +128,7 @@ export default function EventPlayer({
 
     async function checkActivePoll() {
       try {
-        const res = await fetch(`/api/events/${eventId}/polls/active`)
+        const res = await fetch(`/api/events/${eventId}/polls/active`, { cache: 'no-store' })
         if (!res.ok || !active) return
         const data = await res.json()
         if (data.poll) {
@@ -136,15 +136,14 @@ export default function EventPlayer({
           setActivePoll((prev) => {
             if (!prev || prev.id !== data.poll.id) {
               setPollAnswered(data.already_responded ?? false)
-              setPollTally(data.tally ?? null)
               setSelectedOption('')
               setOpenAnswer('')
               setRatingAnswer(0)
-            } else {
-              if (data.tally) setPollTally(data.tally)
             }
             return data.poll
           })
+          // Siempre actualizar tally fuera del updater para garantizar el re-render
+          if (data.tally !== undefined) setPollTally(data.tally ?? null)
         } else {
           setActivePoll(null)
           setPollTally(null)
