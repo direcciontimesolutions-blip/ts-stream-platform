@@ -59,6 +59,7 @@ export default function EventPlayer({
   const [selectedOption, setSelectedOption] = useState<string>('')
   const [openAnswer, setOpenAnswer] = useState<string>('')
   const [ratingAnswer, setRatingAnswer] = useState<number>(0)
+  const dismissedPollIdRef = useRef<string | null>(null)
 
   const endSession = useCallback(async () => {
     if (endedRef.current) return
@@ -131,6 +132,7 @@ export default function EventPlayer({
         if (!res.ok || !active) return
         const data = await res.json()
         if (data.poll) {
+          if (data.poll.id === dismissedPollIdRef.current) return
           setActivePoll((prev) => {
             if (!prev || prev.id !== data.poll.id) {
               setPollAnswered(data.already_responded ?? false)
@@ -162,8 +164,9 @@ export default function EventPlayer({
           const row = payload.new as { status?: string } | null
           if (!row) return
           if (row.status === 'active') {
+            const incoming = row as unknown as Poll
+            if (incoming.id === dismissedPollIdRef.current) return
             setActivePoll((prev) => {
-              const incoming = row as unknown as Poll
               if (!prev || prev.id !== incoming.id) {
                 setPollAnswered(false)
                 setPollTally(null)
@@ -516,7 +519,11 @@ export default function EventPlayer({
                   )}
 
                   <button
-                    onClick={() => { setActivePoll(null); setPollTally(null) }}
+                    onClick={() => {
+                      dismissedPollIdRef.current = activePoll?.id ?? null
+                      setActivePoll(null)
+                      setPollTally(null)
+                    }}
                     className="mt-4 w-full text-white/50 hover:text-white/80 text-sm py-2 rounded-xl transition-colors hover:bg-white/5"
                   >
                     Cerrar
