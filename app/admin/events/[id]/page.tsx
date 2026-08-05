@@ -60,6 +60,12 @@ export default function EventDetailPage() {
   const [importFeedback, setImportFeedback] = useState<ImportResult | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
 
+  // Cloudflare Stream (Tier 1) — subida directa + chequeo de estado
+  const [cfUploadPct, setCfUploadPct] = useState<number | null>(null)
+  const [cfUploadError, setCfUploadError] = useState<string | null>(null)
+  const [cfVideoState, setCfVideoState] = useState<string | null>(null)
+  const [cfCheckingStatus, setCfCheckingStatus] = useState(false)
+
   // Chat admin
   const [chatMessages, setChatMessages] = useState<AdminMessage[]>([])
   const [chatTab, setChatTab] = useState(false)
@@ -143,7 +149,13 @@ export default function EventDetailPage() {
     } catch {}
   }, [eventId])
 
-  useEffect(() => { fetchEvent() }, [fetchEvent])
+  // fetchEvent trae evento + lista de asistentes juntos — sin este intervalo,
+  // asistentes nuevos solo aparecian al recargar la pagina a mano (bug reportado 29 jul 2026)
+  useEffect(() => {
+    fetchEvent()
+    const interval = setInterval(fetchEvent, 30_000)
+    return () => clearInterval(interval)
+  }, [fetchEvent])
   useEffect(() => { if (chatTab) fetchChatMessages() }, [chatTab, fetchChatMessages])
   useEffect(() => { if (showModeratorsTab) fetchModerators() }, [showModeratorsTab, fetchModerators])
   useEffect(() => { if (showPollsTab) fetchPolls() }, [showPollsTab, fetchPolls])
@@ -189,6 +201,61 @@ export default function EventDetailPage() {
         setEvent((prev) => prev ? { ...prev, chat_enabled: data.chat_enabled } : prev)
       }
     } finally { setChatToggling(false) }
+  }
+
+  async function handleVideoUpload(file: File) {
+    if (!event) return
+    setCfUploadError(null)
+    setCfUploadPct(0)
+    setCfVideoState(null)
+    try {
+      const urlRes = await fetch('/api/admin/stream/upload-url', { method: 'POST' })
+      const urlData = await urlRes.json()
+      if (!urlRes.ok) {
+        setCfUploadError(urlData.error ?? 'No se pudo iniciar la subida.')
+        setCfUploadPct(null)
+        return
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', urlData.uploadURL)
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setCfUploadPct(Math.round((ev.loaded / ev.total) * 100))
+        }
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)))
+        xhr.onerror = () => reject(new Error('Error de red durante la subida.'))
+        const body = new FormData()
+        body.append('file', file)
+        xhr.send(body)
+      })
+
+      const patchRes = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cloudflare_stream_id: urlData.uid }),
+      })
+      if (patchRes.ok) {
+        setEvent((prev) => prev ? { ...prev, cloudflare_stream_id: urlData.uid } : prev)
+        setCfVideoState('queued')
+      }
+      setCfUploadPct(null)
+    } catch (err) {
+      setCfUploadError(err instanceof Error ? err.message : 'Error durante la subida.')
+      setCfUploadPct(null)
+    }
+  }
+
+  async function handleCheckVideoStatus() {
+    if (!event?.cloudflare_stream_id) return
+    setCfCheckingStatus(true)
+    try {
+      const res = await fetch(`/api/admin/stream/status/${event.cloudflare_stream_id}`)
+      const data = await res.json()
+      setCfVideoState(res.ok ? data.state : `error: ${data.error}`)
+    } finally {
+      setCfCheckingStatus(false)
+    }
   }
 
   async function handleDeleteMessage(messageId: string) {
@@ -478,6 +545,52 @@ export default function EventDetailPage() {
               <a href={event.youtube_url} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 text-sm font-mono truncate block">
                 {event.youtube_url}
               </a>
+            </div>
+          )}
+
+          {event.streaming_tier === 'cloudflare' && (
+            <div className="pt-2 border-t border-white/10 space-y-3">
+              <p className="text-gray-500 text-xs mb-1">Video de Cloudflare Stream (Tier 1 — costo por uso)</p>
+
+              {event.cloudflare_stream_id ? (
+                <div className="flex items-center gap-3 text-sm">
+                  <code className="text-purple-300 font-mono bg-purple-500/10 px-3 py-1.5 rounded-lg">
+                    {event.cloudflare_stream_id}
+                  </code>
+                  <button
+                    onClick={handleCheckVideoStatus}
+                    disabled={cfCheckingStatus}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 hover:bg-white/15 transition-colors disabled:opacity-50"
+                  >
+                    {cfCheckingStatus ? 'Verificando...' : 'Verificar estado'}
+                  </button>
+                  {cfVideoState && <span className="text-gray-400 text-xs">{cfVideoState}</span>}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-xs">Sin video subido todavia.</p>
+              )}
+
+              <div>
+                <label className="inline-block px-4 py-2 rounded-lg text-sm font-medium text-white bg-white/10 hover:bg-white/15 transition-colors cursor-pointer">
+                  {event.cloudflare_stream_id ? 'Reemplazar video' : 'Subir video'}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f) }}
+                  />
+                </label>
+                {cfUploadPct !== null && (
+                  <div className="mt-2 w-full max-w-xs bg-white/10 rounded-full h-2 overflow-hidden">
+                    <div className="bg-purple-500 h-2 transition-all" style={{ width: `${cfUploadPct}%` }} />
+                  </div>
+                )}
+                {cfUploadError && (
+                  <p className="mt-2 text-red-400 text-xs">
+                    {cfUploadError} — probablemente falten las variables de entorno de Cloudflare Stream todavia.
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </section>

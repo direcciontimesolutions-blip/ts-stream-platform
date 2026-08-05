@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { signAssemblyToken } from '@/lib/assembly-auth'
+import { broadcastQuorumChange } from '@/lib/assembly-realtime'
 import bcrypt from 'bcryptjs'
 
 export async function POST(
@@ -94,6 +95,8 @@ export async function POST(
       .single()
 
     if (!session) return NextResponse.json({ error: 'Error creando sesión.' }, { status: 500 })
+
+    await broadcastQuorumChange(supabase, assembly.id)
 
     const token = await signAssemblyToken({
       sub: attendee.id,

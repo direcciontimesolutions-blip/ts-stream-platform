@@ -26,6 +26,7 @@ interface EventPlayerProps {
   sessionId: string
   eventId: string
   youtubeUrl: string | null
+  cloudflareStreamId?: string | null
   streamingTier: 'youtube' | 'cloudflare' | 'teams'
   attendeeName: string
   chatEnabled: boolean
@@ -37,6 +38,7 @@ export default function EventPlayer({
   sessionId,
   eventId,
   youtubeUrl,
+  cloudflareStreamId,
   streamingTier,
   attendeeName,
   chatEnabled,
@@ -44,6 +46,17 @@ export default function EventPlayer({
   event,
 }: EventPlayerProps) {
   const endedRef = useRef(false)
+  const teamsWrapperRef = useRef<HTMLDivElement>(null)
+
+  // Fullscreen del contenedor propio, no del iframe — Safari iOS pausa el video
+  // si se deja que el <video> nativo dentro del iframe de Teams (cross-origin) entre
+  // en fullscreen; fullscreneando nuestro propio div el iframe nunca pierde su contexto.
+  function handleTeamsFullscreen() {
+    const el = teamsWrapperRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null
+    if (!el) return
+    if (el.requestFullscreen) el.requestFullscreen()
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+  }
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<(Message & { is_own: boolean })[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -60,6 +73,10 @@ export default function EventPlayer({
   const [openAnswer, setOpenAnswer] = useState<string>('')
   const [ratingAnswer, setRatingAnswer] = useState<number>(0)
   const dismissedPollIdRef = useRef<string | null>(null)
+
+  // Cloudflare Stream (Tier 1) — URL firmada, se pide una sola vez al montar
+  const [cfIframeUrl, setCfIframeUrl] = useState<string | null>(null)
+  const [cfError, setCfError] = useState<string | null>(null)
 
   const endSession = useCallback(async () => {
     if (endedRef.current) return
@@ -90,6 +107,24 @@ export default function EventPlayer({
       clearInterval(heartbeat)
     }
   }, [sessionId, org, event])
+
+  // Cloudflare Stream (Tier 1) — pide la URL firmada una vez si el evento usa este tier
+  useEffect(() => {
+    if (streamingTier !== 'cloudflare' || !cloudflareStreamId) return
+    let active = true
+    fetch('/api/stream/signed-url')
+      .then(async (res) => {
+        const data = await res.json()
+        if (!active) return
+        if (!res.ok) {
+          setCfError(data.error ?? 'No se pudo cargar la transmision.')
+          return
+        }
+        setCfIframeUrl(data.iframeUrl)
+      })
+      .catch(() => { if (active) setCfError('No se pudo cargar la transmision.') })
+    return () => { active = false }
+  }, [streamingTier, cloudflareStreamId])
 
   // Chat polling
   const fetchMessages = useCallback(async () => {
@@ -325,21 +360,48 @@ export default function EventPlayer({
               className="w-full"
               style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
             >
-              <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
+              <div ref={teamsWrapperRef} className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl relative group">
                 <iframe
                   src={youtubeUrl}
                   title="Transmision en vivo del evento"
                   allow="autoplay; camera; microphone"
-                  allowFullScreen
                   frameBorder={0}
                   scrolling="no"
                 />
+                <button
+                  onClick={handleTeamsFullscreen}
+                  aria-label="Pantalla completa"
+                  className="absolute bottom-3 right-3 z-10 bg-black/60 hover:bg-black/80 text-white rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                  </svg>
+                </button>
               </div>
+            </div>
+          ) : resolvedTier === 'cloudflare' && cfIframeUrl ? (
+            <div
+              className="w-full"
+              style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
+            >
+              <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
+                <iframe
+                  src={cfIframeUrl}
+                  title="Transmision en vivo del evento"
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          ) : resolvedTier === 'cloudflare' && cfError ? (
+            <div className="text-center space-y-3">
+              <p className="text-white/60 text-lg">La transmision no esta disponible.</p>
+              <p className="text-white/30 text-sm">Contacta a Time Solutions.</p>
             </div>
           ) : resolvedTier === 'cloudflare' ? (
             <div className="text-center space-y-3">
-              <p className="text-white/60 text-lg">Cloudflare Stream disponible en Fase 2</p>
-              <p className="text-white/30 text-sm">Contacta a Time Solutions para activarlo</p>
+              <div className="text-5xl animate-pulse" aria-hidden="true">📡</div>
+              <p className="text-white/60 text-lg">Cargando transmision...</p>
             </div>
           ) : (
             <div className="text-center space-y-3">

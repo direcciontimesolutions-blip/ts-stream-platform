@@ -56,6 +56,7 @@ export async function PATCH(
     const body = await req.json() as {
       status?: string
       youtube_url?: string
+      cloudflare_stream_id?: string | null
       branding?: Record<string, unknown>
       open_registration?: boolean
     }
@@ -65,6 +66,7 @@ export async function PATCH(
       allowedFields.status = body.status
     }
     if (body.youtube_url !== undefined) allowedFields.youtube_url = body.youtube_url
+    if (body.cloudflare_stream_id !== undefined) allowedFields.cloudflare_stream_id = body.cloudflare_stream_id
     if (body.branding !== undefined) allowedFields.branding = body.branding
     if (typeof body.open_registration === 'boolean') {
       // open_registration se almacena dentro del branding JSON

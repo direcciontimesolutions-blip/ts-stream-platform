@@ -77,7 +77,7 @@ export default async function WatchPage({ params }: PageProps) {
 
   const { data: eventData, error: eventError } = await supabase
     .from('events')
-    .select('id, title, slug, status, streaming_tier, youtube_url, branding, chat_enabled')
+    .select('id, title, slug, status, streaming_tier, youtube_url, cloudflare_stream_id, branding, chat_enabled')
     .eq('organization_id', organization.id)
     .eq('slug', event)
     .single()
@@ -108,6 +108,7 @@ export default async function WatchPage({ params }: PageProps) {
         sessionId={jwtPayload.sessionId}
         eventId={eventData.id}
         youtubeUrl={eventData.youtube_url}
+        cloudflareStreamId={eventData.cloudflare_stream_id}
         streamingTier={eventData.streaming_tier}
         attendeeName={jwtPayload.name}
         chatEnabled={eventData.chat_enabled ?? false}

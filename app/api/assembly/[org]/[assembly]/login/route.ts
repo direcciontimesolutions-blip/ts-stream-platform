@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { signAssemblyToken } from '@/lib/assembly-auth'
 import { logAudit } from '@/lib/assembly-audit'
+import { broadcastQuorumChange } from '@/lib/assembly-realtime'
 import bcrypt from 'bcryptjs'
 
 export async function POST(
@@ -143,6 +144,8 @@ export async function POST(
       ip_address: ip,
       user_agent: userAgent,
     })
+
+    await broadcastQuorumChange(supabase, assembly.id)
 
     const token = await signAssemblyToken({
       sub: attendee.id,

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Countdown from '@/components/Countdown'
+import { createClient } from '@/lib/supabase/client'
 import FloorModeratorPanel from '@/components/assemblies/FloorModeratorPanel'
 import type { AssemblyMotion, AssemblyQuorum } from '@/types'
 
@@ -72,6 +73,17 @@ export default function LiveModeratePage() {
     intervalRef.current = setInterval(fetchAll, 10_000)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [fetchAll])
+
+  // Supabase Realtime (Broadcast) — quórum push para el panel del moderador,
+  // el intervalo de 10s arriba queda como respaldo si el canal se cae.
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`assembly-quorum-${assemblyId}`)
+      .on('broadcast', { event: 'quorum_changed' }, () => { fetchAll() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [assemblyId, fetchAll])
 
   async function handleMotionStatus(motionId: string, status: 'open' | 'closed' | 'pending', durationSeconds?: number) {
     setActionLoading(motionId)

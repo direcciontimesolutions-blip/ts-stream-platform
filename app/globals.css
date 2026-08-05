@@ -67,6 +67,17 @@ body {
   border: 0;
 }
 
+/* Fullscreen del CONTENEDOR, no del iframe interno — evita el bug de Safari iOS
+   que pausa el video al fullscreenear el <video> nativo dentro de un iframe cross-origin.
+   Ver components/EventPlayer.tsx, boton de fullscreen propio. */
+.aspect-video-wrapper:fullscreen,
+.aspect-video-wrapper:-webkit-full-screen {
+  padding-bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
 /* Select oscuro — opciones legibles en todos los browsers */
 select {
   color-scheme: dark;

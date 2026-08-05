@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAssemblyTokenFromRequest } from '@/lib/assembly-auth'
+import { broadcastQuorumChange } from '@/lib/assembly-realtime'
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
         .from('assembly_sessions')
         .update({ logout_at: logoutAt, duration_seconds: durationSeconds })
         .eq('id', payload.sessionId)
+
+      await broadcastQuorumChange(supabase, payload.assemblyId)
     }
 
     const res = NextResponse.json({ ok: true })

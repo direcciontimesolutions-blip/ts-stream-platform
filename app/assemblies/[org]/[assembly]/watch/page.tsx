@@ -331,6 +331,20 @@ export default function AssemblyWatchPage() {
     return () => { supabase.removeChannel(channel) }
   }, [state?.assembly.id, fetchState])
 
+  // Supabase Realtime (Broadcast) — quórum push en vez de esperar el poll de 15s.
+  // Broadcast en vez de postgres_changes sobre assembly_sessions: esa tabla tiene
+  // ip_address/user_agent de auditoria, ver lib/assembly-realtime.ts para el porque.
+  useEffect(() => {
+    if (!state?.assembly.id) return
+    const assemblyId = state.assembly.id
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`assembly-quorum-${assemblyId}`)
+      .on('broadcast', { event: 'quorum_changed' }, () => { fetchState() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [state?.assembly.id, fetchState])
+
   async function handleLogout() {
     await fetch(`/api/assembly/${org}/${assembly}/logout`, { method: 'POST' })
     window.location.href = `/assemblies/${org}/${assembly}`
