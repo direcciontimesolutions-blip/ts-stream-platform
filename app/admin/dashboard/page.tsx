@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { getEventLiveState } from '@/lib/event-live-state'
 import type { Organization, Event, Assembly } from '@/types'
 
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
@@ -151,7 +152,9 @@ export default async function DashboardPage() {
                 const orgEvents = eventList.filter(
                   (e) => e.organizations?.id === org.id
                 )
-                const liveEvents = orgEvents.filter((e) => e.status === 'live')
+                const liveEvents = orgEvents.filter(
+                  (e) => getEventLiveState(e.status, e.start_at, e.end_at).isLive
+                )
 
                 return (
                   <div
@@ -226,7 +229,9 @@ export default async function DashboardPage() {
                 </thead>
                 <tbody>
                   {eventList.map((event, idx) => {
-                    const badge = STATUS_BADGE[event.status] ?? STATUS_BADGE.draft
+                    const liveState = getEventLiveState(event.status, event.start_at, event.end_at)
+                    const displayStatus = liveState.isEnded ? 'ended' : liveState.isLive ? 'live' : 'draft'
+                    const badge = STATUS_BADGE[displayStatus] ?? STATUS_BADGE.draft
                     return (
                       <tr
                         key={event.id}
@@ -245,11 +250,14 @@ export default async function DashboardPage() {
                         </td>
                         <td className="px-5 py-3">
                           <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${badge.color}`}>
-                            {event.status === 'live' && (
+                            {displayStatus === 'live' && (
                               <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" aria-hidden="true" />
                             )}
                             {badge.label}
                           </span>
+                          {displayStatus === 'live' && event.status !== 'live' && (
+                            <p className="text-[10px] text-gray-500 mt-0.5">Auto (por horario)</p>
+                          )}
                         </td>
                         <td className="px-5 py-3 hidden md:table-cell">
                           <span className="text-xs text-gray-500">

@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { signAttendeeToken, ATTENDEE_COOKIE } from '@/lib/auth'
 import { getClientIP } from '@/lib/utils'
+import { getEventLiveState } from '@/lib/event-live-state'
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     // 2. Buscar el evento por org_id + slug, verificar que este live
     const { data: eventData, error: eventError } = await supabase
       .from('events')
-      .select('id, title, slug, status')
+      .select('id, title, slug, status, start_at, end_at')
       .eq('organization_id', organization.id)
       .eq('slug', event)
       .single()
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (eventData.status !== 'live') {
+    if (!getEventLiveState(eventData.status, eventData.start_at, eventData.end_at).isLive) {
       return NextResponse.json(
         { error: 'El evento no esta disponible en este momento.' },
         { status: 403 }

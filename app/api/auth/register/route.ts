@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { signAttendeeToken, ATTENDEE_COOKIE } from '@/lib/auth'
 import { getClientIP } from '@/lib/utils'
+import { getEventLiveState } from '@/lib/event-live-state'
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const { data: eventData } = await supabase
       .from('events')
-      .select('id, status, branding')
+      .select('id, status, start_at, end_at, branding')
       .eq('organization_id', organization.id)
       .eq('slug', event)
       .single()
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (!eventData) {
       return NextResponse.json({ error: 'Evento no encontrado.' }, { status: 404 })
     }
-    if (eventData.status !== 'live') {
+    if (!getEventLiveState(eventData.status, eventData.start_at, eventData.end_at).isLive) {
       return NextResponse.json({ error: 'El evento no está disponible.' }, { status: 403 })
     }
 

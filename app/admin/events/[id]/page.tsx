@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MetricsDashboard from '@/components/admin/MetricsDashboard'
 import AttendeeImport from '@/components/admin/AttendeeImport'
+import { getEventLiveState } from '@/lib/event-live-state'
 import type { Event, Organization, ImportResult, EventModerator } from '@/types'
 
 interface AttendeeWithKick {
@@ -455,7 +456,9 @@ export default function EventDetailPage() {
     : (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000')
   const eventUrl = `${appUrl}/${event.organizations.slug}/${event.slug}`
   const transition = STATUS_TRANSITIONS[event.status]
-  const badgeColor = STATUS_BADGE_COLORS[event.status] ?? STATUS_BADGE_COLORS.draft
+  const liveState = getEventLiveState(event.status, event.start_at, event.end_at)
+  const displayStatus = liveState.isEnded ? 'ended' : liveState.isLive ? 'live' : 'draft'
+  const badgeColor = STATUS_BADGE_COLORS[displayStatus] ?? STATUS_BADGE_COLORS.draft
   const isOpenReg = (event.branding ?? {}).open_registration === true
 
   return (
@@ -479,12 +482,19 @@ export default function EventDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${badgeColor}`}>
-              {event.status === 'live' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" aria-hidden="true" />
+            <div className="text-right">
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${badgeColor}`}>
+                {displayStatus === 'live' && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" aria-hidden="true" />
+                )}
+                {STATUS_LABELS[displayStatus]}
+              </span>
+              {displayStatus !== event.status && (
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  Automático por horario (campo status sigue en &quot;{STATUS_LABELS[event.status]}&quot;)
+                </p>
               )}
-              {STATUS_LABELS[event.status]}
-            </span>
+            </div>
             {transition && (
               <button
                 onClick={handleStatusChange}
@@ -602,7 +612,7 @@ export default function EventDetailPage() {
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
             Metricas en tiempo real
           </h2>
-          <MetricsDashboard eventId={eventId} status={event.status} onKick={fetchEvent} />
+          <MetricsDashboard eventId={eventId} status={displayStatus} onKick={fetchEvent} />
         </section>
 
         {/* Chat */}

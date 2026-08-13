@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import type { Metadata } from 'next'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { verifyAttendeeToken } from '@/lib/auth'
+import { getEventLiveState } from '@/lib/event-live-state'
 import BrandedLayout from '@/components/BrandedLayout'
 import EventPlayer from '@/components/EventPlayer'
 import type { Organization } from '@/types'
@@ -77,7 +78,7 @@ export default async function WatchPage({ params }: PageProps) {
 
   const { data: eventData, error: eventError } = await supabase
     .from('events')
-    .select('id, title, slug, status, streaming_tier, youtube_url, cloudflare_stream_id, branding, chat_enabled')
+    .select('id, title, slug, status, start_at, end_at, streaming_tier, youtube_url, cloudflare_stream_id, branding, chat_enabled')
     .eq('organization_id', organization.id)
     .eq('slug', event)
     .single()
@@ -86,7 +87,8 @@ export default async function WatchPage({ params }: PageProps) {
     notFound()
   }
 
-  if (eventData.status !== 'live') {
+  const { isLive } = getEventLiveState(eventData.status, eventData.start_at, eventData.end_at)
+  if (!isLive) {
     redirect(`/${org}/${event}`)
   }
 

@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { verifyAttendeeToken } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSignedIframeUrl } from '@/lib/cloudflare-stream'
+import { getEventLiveState } from '@/lib/event-live-state'
 
 export async function GET() {
   try {
@@ -23,7 +24,7 @@ export async function GET() {
     const supabase = createServiceRoleClient()
     const { data: event, error } = await supabase
       .from('events')
-      .select('streaming_tier, cloudflare_stream_id, status')
+      .select('streaming_tier, cloudflare_stream_id, status, start_at, end_at')
       .eq('id', payload.eventId)
       .single()
 
@@ -31,7 +32,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Evento no encontrado.' }, { status: 404 })
     }
 
-    if (event.status !== 'live') {
+    if (!getEventLiveState(event.status, event.start_at, event.end_at).isLive) {
       return NextResponse.json({ error: 'El evento no esta en vivo.' }, { status: 409 })
     }
 

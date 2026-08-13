@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { verifyAttendeeToken } from '@/lib/auth'
+import { getEventLiveState } from '@/lib/event-live-state'
 import LoginForm from '@/components/LoginForm'
 import OpenRegisterForm from '@/components/OpenRegisterForm'
 
@@ -56,7 +57,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   // 2. Evento
   const { data: eventData, error: eventError } = await supabase
     .from('events')
-    .select('id, title, slug, status, branding, description')
+    .select('id, title, slug, status, start_at, end_at, branding, description')
     .eq('organization_id', organization.id)
     .eq('slug', event)
     .single()
@@ -65,8 +66,14 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     notFound()
   }
 
+  const { isDraft, isEnded, isLive } = getEventLiveState(
+    eventData.status,
+    eventData.start_at,
+    eventData.end_at
+  )
+
   // 3. Redirigir si ya tiene sesión válida y evento está live
-  if (!kicked && eventData.status === 'live') {
+  if (!kicked && isLive) {
     const cookieStore = await cookies()
     const token = cookieStore.get('ts_stream_token')?.value
     if (token) {
@@ -92,9 +99,6 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     open_registration?: boolean
   }
 
-  const isDraft = eventData.status === 'draft'
-  const isEnded = eventData.status === 'ended'
-  const isLive = eventData.status === 'live'
   const isOpenRegistration = branding.open_registration === true
 
   const primaryColor = branding.primary_color ?? organization.primary_color
