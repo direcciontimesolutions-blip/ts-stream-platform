@@ -189,15 +189,14 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
         {/* Franja Time Solutions — publicidad de la plataforma */}
         <div className="px-8 pt-7 pb-5 border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
-            {/* Logo T8ME con mix-blend-mode screen — el fondo negro desaparece */}
+            {/* Isotipo Time Solutions (El Instante Partido) — PNG con alpha real, se adapta a cualquier color de fondo */}
             <div className="shrink-0">
               <Image
                 src="/ts-logo.png"
                 alt="Time Solutions"
-                width={56}
+                width={46}
                 height={56}
-                className="h-14 w-14 object-contain"
-                style={{ mixBlendMode: 'screen' } as React.CSSProperties}
+                className="h-14 w-auto object-contain"
                 priority
               />
             </div>
