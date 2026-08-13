@@ -12,7 +12,7 @@ interface Props {
 
 export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
   const router = useRouter()
-  const [form, setForm] = useState({ full_name: '', email: '' })
+  const [form, setForm] = useState({ full_name: '', email: '', company: '', phone: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,16 +21,26 @@ export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  const isValid =
+    form.full_name.trim() && form.email.trim() && form.company.trim() && form.phone.trim()
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.full_name.trim() || !form.email.trim()) return
+    if (!isValid) return
     setError(null)
     setLoading(true)
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ org, event, full_name: form.full_name.trim(), email: form.email.trim() }),
+        body: JSON.stringify({
+          org,
+          event,
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          company: form.company.trim(),
+          phone: form.phone.trim(),
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -91,9 +101,43 @@ export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
         />
       </div>
 
+      <div>
+        <label htmlFor="company" className="block text-sm font-medium text-white/70 mb-1.5">
+          Empresa / Institución
+        </label>
+        <input
+          id="company"
+          name="company"
+          type="text"
+          value={form.company}
+          onChange={handleChange}
+          required
+          autoComplete="organization"
+          className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+          placeholder="Nombre de tu empresa o institución"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="phone" className="block text-sm font-medium text-white/70 mb-1.5">
+          Teléfono
+        </label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          value={form.phone}
+          onChange={handleChange}
+          required
+          autoComplete="tel"
+          className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+          placeholder="300 123 4567"
+        />
+      </div>
+
       <button
         type="submit"
-        disabled={loading || !form.full_name.trim() || !form.email.trim()}
+        disabled={loading || !isValid}
         style={{ backgroundColor: primaryColor }}
         className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
       >

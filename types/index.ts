@@ -54,6 +54,8 @@ export interface Attendee {
   organization_id: string
   full_name: string
   email: string | null
+  company: string | null
+  phone: string | null
   username: string
   password_hash: string
   role: AttendeeRole
@@ -66,6 +68,8 @@ export interface AttendeePublic {
   organization_id: string
   full_name: string
   email: string | null
+  company: string | null
+  phone: string | null
   username: string
   role: AttendeeRole
   created_at: string

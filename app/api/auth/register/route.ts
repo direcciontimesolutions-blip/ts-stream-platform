@@ -13,12 +13,14 @@ export async function POST(req: NextRequest) {
       event?: string
       full_name?: string
       email?: string
+      company?: string
+      phone?: string
     }
 
-    const { org, event, full_name, email } = body
+    const { org, event, full_name, email, company, phone } = body
 
-    if (!org || !event || !full_name?.trim() || !email?.trim()) {
-      return NextResponse.json({ error: 'Nombre y correo son requeridos.' }, { status: 400 })
+    if (!org || !event || !full_name?.trim() || !email?.trim() || !company?.trim() || !phone?.trim()) {
+      return NextResponse.json({ error: 'Nombre, correo, empresa y telefono son requeridos.' }, { status: 400 })
     }
 
     const supabase = createServiceRoleClient()
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest) {
         organization_id: organization.id,
         full_name: full_name.trim(),
         email: email.trim().toLowerCase(),
+        company: company.trim(),
+        phone: phone.trim(),
         username,
         password_hash: passwordHash,
         role: 'attendee',

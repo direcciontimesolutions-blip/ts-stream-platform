@@ -12,6 +12,8 @@ interface AttendeeWithKick {
   id: string
   full_name: string
   email: string | null
+  company: string | null
+  phone: string | null
   username: string
   role: string
   created_at: string
@@ -1013,6 +1015,8 @@ export default function EventDetailPage() {
                     <tr className="border-b border-white/10">
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Nombre</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Email</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Empresa</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Telefono</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Usuario</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Rol</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Estado</th>
@@ -1024,6 +1028,8 @@ export default function EventDetailPage() {
                       <tr key={attendee.id} className={`border-b border-white/5 ${idx === attendees.length - 1 ? 'border-b-0' : ''}`}>
                         <td className="px-5 py-3 text-sm text-white">{attendee.full_name}</td>
                         <td className="px-5 py-3 text-sm text-gray-400 hidden sm:table-cell">{attendee.email ?? '—'}</td>
+                        <td className="px-5 py-3 text-sm text-gray-400 hidden md:table-cell">{attendee.company ?? '—'}</td>
+                        <td className="px-5 py-3 text-sm text-gray-400 hidden md:table-cell">{attendee.phone ?? '—'}</td>
                         <td className="px-5 py-3 text-sm text-gray-300 font-mono">{attendee.username}</td>
                         <td className="px-5 py-3">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
