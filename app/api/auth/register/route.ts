@@ -55,33 +55,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este evento requiere credenciales de acceso.' }, { status: 403 })
     }
 
-    // Cada ingreso = registro independiente. Username único por timestamp.
-    const base = email.trim().toLowerCase().split('@')[0].replace(/[^a-z0-9]/g, '').slice(0, 12)
-    const username = `${base}_${Date.now().toString(36)}`
-    // password_hash no se usa para login en modo open — valor aleatorio
-    const passwordHash = await bcrypt.hash(crypto.randomUUID(), 4)
+    const normalizedEmail = email.trim().toLowerCase()
     const ipAddress = getClientIP(req)
     const userAgent = req.headers.get('user-agent') ?? 'unknown'
 
-    const { data: attendee, error: attError } = await supabase
+    // Mismo correo + mismo evento = misma persona reingresando. Reusar el asistente
+    // en vez de duplicarlo, para que el conteo y el tiempo conectado por persona sean reales.
+    const { data: existingAttendee } = await supabase
       .from('attendees')
-      .insert({
-        event_id: eventData.id,
-        organization_id: organization.id,
-        full_name: full_name.trim(),
-        email: email.trim().toLowerCase(),
-        company: company.trim(),
-        phone: phone.trim(),
-        username,
-        password_hash: passwordHash,
-        role: 'attendee',
-      })
       .select('id, full_name, username')
-      .single()
+      .eq('event_id', eventData.id)
+      .eq('email', normalizedEmail)
+      .maybeSingle()
 
-    if (attError || !attendee) {
-      console.error('Error creando asistente:', attError)
-      return NextResponse.json({ error: 'Error al registrar. Intenta de nuevo.' }, { status: 500 })
+    let attendee = existingAttendee
+
+    if (!attendee) {
+      const base = normalizedEmail.split('@')[0].replace(/[^a-z0-9]/g, '').slice(0, 12)
+      const username = `${base}_${Date.now().toString(36)}`
+      // password_hash no se usa para login en modo open — valor aleatorio
+      const passwordHash = await bcrypt.hash(crypto.randomUUID(), 4)
+
+      const { data: newAttendee, error: attError } = await supabase
+        .from('attendees')
+        .insert({
+          event_id: eventData.id,
+          organization_id: organization.id,
+          full_name: full_name.trim(),
+          email: normalizedEmail,
+          company: company.trim(),
+          phone: phone.trim(),
+          username,
+          password_hash: passwordHash,
+          role: 'attendee',
+        })
+        .select('id, full_name, username')
+        .single()
+
+      if (attError || !newAttendee) {
+        console.error('Error creando asistente:', attError)
+        return NextResponse.json({ error: 'Error al registrar. Intenta de nuevo.' }, { status: 500 })
+      }
+      attendee = newAttendee
     }
 
     const { data: session, error: sessionError } = await supabase

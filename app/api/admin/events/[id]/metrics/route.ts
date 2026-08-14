@@ -29,14 +29,15 @@ export async function GET(
         .is('kicked_at', null)
         .gte('last_ping_at', twoMinutesAgo),
 
+      // Personas reales, no sesiones — un reingreso con el mismo correo reusa el mismo asistente.
       supabase
-        .from('sessions')
-        .select('attendee_id', { count: 'exact', head: true })
+        .from('attendees')
+        .select('id', { count: 'exact', head: true })
         .eq('event_id', eventId),
 
       supabase
         .from('sessions')
-        .select('duration_seconds')
+        .select('attendee_id, duration_seconds')
         .eq('event_id', eventId)
         .not('duration_seconds', 'is', null),
 
@@ -51,11 +52,19 @@ export async function GET(
         .order('login_at', { ascending: false }),
     ])
 
+    // Tiempo total por persona (suma de todas sus sesiones/reingresos), luego promedio entre personas.
     let avg_duration_seconds: number | null = null
     const durationData = durationResult.data
     if (durationData && durationData.length > 0) {
-      const total = durationData.reduce((sum, row) => sum + (row.duration_seconds ?? 0), 0)
-      avg_duration_seconds = Math.round(total / durationData.length)
+      const totalByAttendee = new Map<string, number>()
+      for (const row of durationData) {
+        totalByAttendee.set(
+          row.attendee_id,
+          (totalByAttendee.get(row.attendee_id) ?? 0) + (row.duration_seconds ?? 0)
+        )
+      }
+      const totals = [...totalByAttendee.values()]
+      avg_duration_seconds = Math.round(totals.reduce((sum, d) => sum + d, 0) / totals.length)
     }
 
     const connected_attendees: ConnectedAttendee[] = (activeResult.data ?? []).map((row) => {
