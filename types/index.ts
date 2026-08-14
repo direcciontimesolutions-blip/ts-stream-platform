@@ -25,6 +25,8 @@ export interface EventBranding {
   logo_url?: string
   background_color?: string
   open_registration?: boolean
+  // Imágenes del carrusel informativo en la landing (agenda, patrocinadores, etc.)
+  carousel_images?: string[]
 }
 
 export interface Event {

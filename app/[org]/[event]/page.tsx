@@ -9,6 +9,7 @@ import { verifyAttendeeToken } from '@/lib/auth'
 import { getEventLiveState } from '@/lib/event-live-state'
 import LoginForm from '@/components/LoginForm'
 import OpenRegisterForm from '@/components/OpenRegisterForm'
+import EventCarousel from '@/components/EventCarousel'
 
 interface PageProps {
   params: Promise<{ org: string; event: string }>
@@ -97,6 +98,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     logo_url?: string
     background_color?: string
     open_registration?: boolean
+    carousel_images?: string[]
   }
 
   const isOpenRegistration = branding.open_registration === true
@@ -104,8 +106,10 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   const primaryColor = branding.primary_color ?? organization.primary_color
   const bgColor = branding.background_color ?? '#0C0C14'
   const logoUrl = branding.logo_url ?? organization.logo_url
+  const carouselImages = branding.carousel_images ?? []
 
   return (
+    <div style={{ backgroundColor: bgColor }}>
     <div
       className="min-h-screen flex flex-col lg:flex-row"
       style={{ backgroundColor: bgColor }}
@@ -295,6 +299,16 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
           </div>
         </div>
       </div>
+    </div>
+
+      {/* ── Sección de carrusel informativo (agenda, patrocinadores, cómo participar) ── */}
+      {carouselImages.length > 0 && (
+        <EventCarousel
+          images={carouselImages}
+          primaryColor={primaryColor}
+          eventTitle={eventData.title}
+        />
+      )}
     </div>
   )
 }
