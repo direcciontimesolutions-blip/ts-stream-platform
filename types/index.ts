@@ -23,6 +23,9 @@ export interface EventBranding {
   primary_color?: string
   secondary_color?: string
   logo_url?: string
+  // Variante blanca del logo, para el header de /watch (fondo oscuro). Si no esta
+  // definida, el header cae a logo_url normal (pensado para fondos claros).
+  logo_url_dark?: string
   background_color?: string
   open_registration?: boolean
   // Imágenes del carrusel informativo en la landing (agenda, patrocinadores, etc.)

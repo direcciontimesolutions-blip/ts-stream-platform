@@ -24,6 +24,11 @@ export default function BrandedLayout({
   const primaryColor = branding.primary_color ?? organization.primary_color
   const secondaryColor = branding.secondary_color ?? organization.secondary_color
   const logoUrl = branding.logo_url ?? organization.logo_url
+  // Header de /watch va sobre fondo oscuro sin caja blanca detras (a diferencia de
+  // la landing de registro, que si tiene bg-white detras del logo) — usar la variante
+  // blanca si el evento la tiene configurada, con fallback al logo normal para no
+  // romper organizaciones que aun no tengan variante oscura.
+  const headerLogoUrl = branding.logo_url_dark ?? logoUrl
   const bgColor = branding.background_color ?? '#0A0A0F'
   const diamondSponsors = sponsors.filter((s) => s.tier === 'diamond')
   const regularSponsors = sponsors.filter((s) => s.tier !== 'diamond')
@@ -40,9 +45,9 @@ export default function BrandedLayout({
       {/* Header con branding */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
-          {logoUrl ? (
+          {headerLogoUrl ? (
             <Image
-              src={logoUrl}
+              src={headerLogoUrl}
               alt={`Logo ${organization.name}`}
               width={140}
               height={40}
