@@ -66,24 +66,80 @@ export default async function WatchPage({ params }: PageProps) {
   }
 
   // Obtener el evento con branding y org
-  const { data: organization, error: orgError } = await supabase
-    .from('organizations')
-    .select('id, name, slug, logo_url, primary_color, secondary_color')
-    .eq('slug', org)
-    .single()
+  // Mismo criterio de Plan B que en la pagina de acceso (app/[org]/[event]/page.tsx):
+  // si la BD no responde (no si el evento realmente no existe), en vez de tronar con
+  // notFound() redirigimos a la pagina de acceso, que ya sabe mostrar el respaldo con
+  // el link directo de transmision — asi no duplicamos esa pantalla aqui.
+  let organization: {
+    id: string
+    name: string
+    slug: string
+    logo_url: string | null
+    primary_color: string
+    secondary_color: string
+  } | null = null
+  let dbUnavailable = false
 
-  if (orgError || !organization) {
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id, name, slug, logo_url, primary_color, secondary_color')
+      .eq('slug', org)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      dbUnavailable = true
+    } else {
+      organization = data
+    }
+  } catch {
+    dbUnavailable = true
+  }
+
+  if (dbUnavailable) {
+    redirect(`/${org}/${event}`)
+  }
+
+  if (!organization) {
     notFound()
   }
 
-  const { data: eventData, error: eventError } = await supabase
-    .from('events')
-    .select('id, title, slug, status, start_at, end_at, streaming_tier, youtube_url, cloudflare_stream_id, branding, chat_enabled')
-    .eq('organization_id', organization.id)
-    .eq('slug', event)
-    .single()
+  let eventData: {
+    id: string
+    title: string
+    slug: string
+    status: string
+    start_at: string
+    end_at: string
+    streaming_tier: 'youtube' | 'cloudflare' | 'teams'
+    youtube_url: string | null
+    cloudflare_stream_id: string | null
+    branding: Record<string, unknown> | null
+    chat_enabled: boolean
+  } | null = null
 
-  if (eventError || !eventData) {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('id, title, slug, status, start_at, end_at, streaming_tier, youtube_url, cloudflare_stream_id, branding, chat_enabled')
+      .eq('organization_id', organization.id)
+      .eq('slug', event)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      dbUnavailable = true
+    } else {
+      eventData = data
+    }
+  } catch {
+    dbUnavailable = true
+  }
+
+  if (dbUnavailable) {
+    redirect(`/${org}/${event}`)
+  }
+
+  if (!eventData) {
     notFound()
   }
 

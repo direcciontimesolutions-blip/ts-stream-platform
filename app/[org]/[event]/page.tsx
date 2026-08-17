@@ -7,9 +7,11 @@ import { cookies } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { verifyAttendeeToken } from '@/lib/auth'
 import { getEventLiveState } from '@/lib/event-live-state'
+import { getFallbackStreamUrl } from '@/lib/fallback-stream'
 import LoginForm from '@/components/LoginForm'
 import OpenRegisterForm from '@/components/OpenRegisterForm'
 import EventCarousel from '@/components/EventCarousel'
+import DbFallbackScreen from '@/components/DbFallbackScreen'
 
 interface PageProps {
   params: Promise<{ org: string; event: string }>
@@ -45,25 +47,79 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   const supabase = createServiceRoleClient()
 
   // 1. Organización
-  const { data: organization, error: orgError } = await supabase
-    .from('organizations')
-    .select('id, name, slug, logo_url, primary_color, secondary_color')
-    .eq('slug', org)
-    .single()
+  // Las queries van envueltas en try/catch para distinguir dos escenarios:
+  // (a) el evento/org realmente no existe (PGRST116 = "no rows" de PostgREST) → 404 real, comportamiento sin cambios.
+  // (b) la BD no responde (timeout/conexion/excepcion de red) → Plan B: pantalla de respaldo con link directo,
+  //     en vez de tronar o mostrar un 404 enganoso. notFound() se llama SIEMPRE fuera del try/catch: Next.js
+  //     implementa notFound() lanzando una excepcion especial (NEXT_NOT_FOUND) que un catch generico se tragaria.
+  let organization: {
+    id: string
+    name: string
+    slug: string
+    logo_url: string | null
+    primary_color: string
+    secondary_color: string
+  } | null = null
+  let dbUnavailable = false
 
-  if (orgError || !organization) {
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id, name, slug, logo_url, primary_color, secondary_color')
+      .eq('slug', org)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      dbUnavailable = true
+    } else {
+      organization = data
+    }
+  } catch {
+    dbUnavailable = true
+  }
+
+  if (dbUnavailable) {
+    return <DbFallbackScreen fallbackUrl={getFallbackStreamUrl(org, event)} />
+  }
+
+  if (!organization) {
     notFound()
   }
 
   // 2. Evento
-  const { data: eventData, error: eventError } = await supabase
-    .from('events')
-    .select('id, title, slug, status, start_at, end_at, branding, description')
-    .eq('organization_id', organization.id)
-    .eq('slug', event)
-    .single()
+  let eventData: {
+    id: string
+    title: string
+    slug: string
+    status: string
+    start_at: string
+    end_at: string
+    branding: Record<string, unknown> | null
+    description: string | null
+  } | null = null
 
-  if (eventError || !eventData) {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('id, title, slug, status, start_at, end_at, branding, description')
+      .eq('organization_id', organization.id)
+      .eq('slug', event)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      dbUnavailable = true
+    } else {
+      eventData = data
+    }
+  } catch {
+    dbUnavailable = true
+  }
+
+  if (dbUnavailable) {
+    return <DbFallbackScreen fallbackUrl={getFallbackStreamUrl(org, event)} />
+  }
+
+  if (!eventData) {
     notFound()
   }
 
