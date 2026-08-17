@@ -30,6 +30,7 @@ interface EventPlayerProps {
   streamingTier: 'youtube' | 'cloudflare' | 'teams'
   attendeeName: string
   chatEnabled: boolean
+  agendaUrl?: string | null
   org: string
   event: string
 }
@@ -42,6 +43,7 @@ export default function EventPlayer({
   streamingTier,
   attendeeName,
   chatEnabled,
+  agendaUrl,
   org,
   event,
 }: EventPlayerProps) {
@@ -310,6 +312,20 @@ export default function EventPlayer({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {agendaUrl && (
+            <a
+              href={agendaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-white/70 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 flex items-center gap-1.5"
+              aria-label="Ver agenda del evento (PDF, se abre en una pestaña nueva)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Ver agenda
+            </a>
+          )}
           {chatActive && (
             <button
               onClick={() => setChatOpen((v) => !v)}

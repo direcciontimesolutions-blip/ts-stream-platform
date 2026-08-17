@@ -153,6 +153,7 @@ export default async function WatchPage({ params }: PageProps) {
     secondary_color?: string
     logo_url?: string
     background_color?: string
+    agenda_url?: string
   }
 
   return (
@@ -170,6 +171,7 @@ export default async function WatchPage({ params }: PageProps) {
         streamingTier={eventData.streaming_tier}
         attendeeName={jwtPayload.name}
         chatEnabled={eventData.chat_enabled ?? false}
+        agendaUrl={branding.agenda_url ?? null}
         org={org}
         event={event}
       />

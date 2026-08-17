@@ -27,6 +27,8 @@ export interface EventBranding {
   open_registration?: boolean
   // Imágenes del carrusel informativo en la landing (agenda, patrocinadores, etc.)
   carousel_images?: string[]
+  // Link a la agenda del evento (PDF), mostrado como boton "Ver agenda" en /watch
+  agenda_url?: string
 }
 
 export interface Event {
