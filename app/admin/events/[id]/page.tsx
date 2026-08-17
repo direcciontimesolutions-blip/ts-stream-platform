@@ -62,6 +62,7 @@ export default function EventDetailPage() {
   const [showImport, setShowImport] = useState(false)
   const [importFeedback, setImportFeedback] = useState<ImportResult | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   // Cloudflare Stream (Tier 1) — subida directa + chequeo de estado
   const [cfUploadPct, setCfUploadPct] = useState<number | null>(null)
@@ -355,6 +356,22 @@ export default function EventDetailPage() {
       await fetch(`/api/admin/events/${eventId}/attendees/${attendeeId}`, { method: 'DELETE' })
       setAttendees((prev) => prev.filter((a) => a.id !== attendeeId))
     } finally { setDeletingAttendeeId(null) }
+  }
+
+  async function handleExportCsv() {
+    if (exportingCsv) return
+    setExportingCsv(true)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/export`)
+      if (!res.ok) { alert('Error generando el archivo de métricas.'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `metricas-${event?.slug ?? eventId}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally { setExportingCsv(false) }
   }
 
   async function handleCreatePoll(e: React.FormEvent) {
@@ -995,6 +1012,14 @@ export default function EventDetailPage() {
                   Importar CSV
                 </button>
               )}
+              <button
+                onClick={handleExportCsv}
+                disabled={exportingCsv || attendees.length === 0}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50"
+                title="Descarga un CSV con tiempo de conexión y número de sesiones por asistente"
+              >
+                {exportingCsv ? 'Generando...' : 'Exportar CSV'}
+              </button>
             </div>
           </div>
           {isOpenReg && (
