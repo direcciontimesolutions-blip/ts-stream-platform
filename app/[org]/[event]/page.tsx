@@ -13,6 +13,7 @@ import OpenRegisterForm from '@/components/OpenRegisterForm'
 import EventCarousel from '@/components/EventCarousel'
 import DbFallbackScreen from '@/components/DbFallbackScreen'
 import TimeSolutionsBrandStrip from '@/components/TimeSolutionsBrandStrip'
+import type { EventSponsor } from '@/types'
 
 interface PageProps {
   params: Promise<{ org: string; event: string }>
@@ -156,6 +157,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     background_color?: string
     open_registration?: boolean
     carousel_images?: string[]
+    sponsors?: EventSponsor[]
   }
 
   const isOpenRegistration = branding.open_registration === true
@@ -164,6 +166,9 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   const bgColor = branding.background_color ?? '#0C0C14'
   const logoUrl = branding.logo_url ?? organization.logo_url
   const carouselImages = branding.carousel_images ?? []
+  const sponsors = branding.sponsors ?? []
+  const diamondSponsors = sponsors.filter((s) => s.tier === 'diamond')
+  const regularSponsors = sponsors.filter((s) => s.tier !== 'diamond')
 
   return (
     <div style={{ backgroundColor: bgColor }}>
@@ -225,6 +230,61 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
             <p className="mt-4 text-white/45 text-sm leading-relaxed max-w-xs">
               {eventData.description}
             </p>
+          )}
+
+          {/* Patrocinadores — informacion de apoyo, subordinada al logo/nombre del cliente */}
+          {sponsors.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-white/10 w-full max-w-sm flex flex-col items-center">
+              {diamondSponsors.length > 0 && (
+                <div className="mb-5 flex flex-col items-center gap-2">
+                  <span className="text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-amber-300/70">
+                    Patrocinador diamante
+                  </span>
+                  <div className="flex flex-wrap items-center justify-center gap-2.5">
+                    {diamondSponsors.map((sponsor) => (
+                      <div
+                        key={sponsor.name}
+                        className="bg-white rounded-lg px-4 py-2.5 flex items-center justify-center shadow-sm"
+                        title={sponsor.name}
+                      >
+                        <Image
+                          src={sponsor.logo_url}
+                          alt={sponsor.name}
+                          width={100}
+                          height={40}
+                          className="h-7 w-auto object-contain"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {regularSponsors.length > 0 && (
+                <>
+                  <span className="text-white/30 text-[0.6rem] font-semibold uppercase tracking-[0.2em] mb-3">
+                    Con el apoyo de
+                  </span>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {regularSponsors.map((sponsor) => (
+                      <div
+                        key={sponsor.name}
+                        className="bg-white rounded-md px-2.5 py-1.5 flex items-center justify-center"
+                        title={sponsor.name}
+                      >
+                        <Image
+                          src={sponsor.logo_url}
+                          alt={sponsor.name}
+                          width={72}
+                          height={28}
+                          className="h-4 w-auto object-contain"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {/* Badge En vivo */}

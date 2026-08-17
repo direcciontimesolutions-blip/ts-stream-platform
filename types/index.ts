@@ -29,6 +29,14 @@ export interface EventBranding {
   carousel_images?: string[]
   // Link a la agenda del evento (PDF), mostrado como boton "Ver agenda" en /watch
   agenda_url?: string
+  // Patrocinadores mostrados en el panel izquierdo de la landing, debajo del titulo/descripcion
+  sponsors?: EventSponsor[]
+}
+
+export interface EventSponsor {
+  name: string
+  logo_url: string
+  tier?: 'diamond'
 }
 
 export interface Event {
