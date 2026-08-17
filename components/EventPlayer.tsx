@@ -92,12 +92,49 @@ export default function EventPlayer({
   // Fullscreen del contenedor propio, no del iframe — Safari iOS pausa el video
   // si se deja que el <video> nativo dentro del iframe de Teams (cross-origin) entre
   // en fullscreen; fullscreneando nuestro propio div el iframe nunca pierde su contexto.
+  //
+  // Limitacion real de plataforma (no bug de este codigo): Safari de iOS nunca
+  // implemento la Fullscreen API estandar para elementos que no sean <video> — ni
+  // requestFullscreen() ni el prefijo webkit existen ahi para un <div>. Solo un
+  // <video> nativo tiene webkitEnterFullscreen(), y el nuestro esta dentro de un
+  // iframe cross-origin de Teams al que no tenemos acceso. Por eso, si ninguna de
+  // las dos APIs esta disponible en el elemento, caemos a un fallback 100% CSS
+  // (pseudoFullscreen: position:fixed cubriendo el viewport) en vez de dejar que el
+  // boton parezca funcionar y no haga nada — ver .pseudo-fullscreen en globals.css.
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false)
+
   function handleTeamsFullscreen() {
+    if (pseudoFullscreen) {
+      setPseudoFullscreen(false)
+      return
+    }
     const el = teamsWrapperRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null
     if (!el) return
-    if (el.requestFullscreen) el.requestFullscreen()
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+    if (typeof el.requestFullscreen === 'function') {
+      el.requestFullscreen().catch(() => setPseudoFullscreen(true))
+    } else if (typeof el.webkitRequestFullscreen === 'function') {
+      el.webkitRequestFullscreen()
+    } else {
+      setPseudoFullscreen(true)
+    }
   }
+
+  // Mientras el fallback CSS esta activo: bloquear scroll del body (no hay chrome de
+  // fullscreen real que lo haga por nosotros) y permitir salir con Escape (util en
+  // desktop/Android; en iOS el boton mismo es la unica salida, por eso su icono cambia).
+  useEffect(() => {
+    if (!pseudoFullscreen) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPseudoFullscreen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [pseudoFullscreen])
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<(Message & { is_own: boolean })[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -421,7 +458,12 @@ export default function EventPlayer({
               className="w-full"
               style={playerMaxWidthStyle}
             >
-              <div ref={teamsWrapperRef} className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl relative group">
+              <div
+                ref={teamsWrapperRef}
+                className={`aspect-video-wrapper shadow-2xl relative group ${
+                  pseudoFullscreen ? 'pseudo-fullscreen' : 'rounded-xl overflow-hidden'
+                }`}
+              >
                 <iframe
                   src={youtubeUrl}
                   title="Transmision en vivo del evento"
@@ -431,12 +473,18 @@ export default function EventPlayer({
                 />
                 <button
                   onClick={handleTeamsFullscreen}
-                  aria-label="Pantalla completa"
+                  aria-label={pseudoFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                   className="absolute bottom-3 right-3 z-10 bg-black/60 hover:bg-black/80 text-white rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                  </svg>
+                  {pseudoFullscreen ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 3v4a1 1 0 0 1-1 1H4m16-5v4a1 1 0 0 1-1 1h-4M4 15h4a1 1 0 0 1 1 1v4m10-5h-4a1 1 0 0 0-1 1v4" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>

@@ -78,6 +78,24 @@ body {
   border-radius: 0;
 }
 
+/* Fallback de "pantalla completa" via CSS puro, para navegadores sin Fullscreen API
+   sobre elementos que no sean <video> — el caso real es Safari de iOS, que nunca
+   implemento requestFullscreen()/webkitRequestFullscreen() para un <div> (solo lo
+   tiene para <video> nativo via webkitEnterFullscreen, que no podemos usar aqui
+   porque el <video> vive dentro de un iframe cross-origin de Teams). No es fullscreen
+   real del sistema operativo (la barra de Safari puede seguir visible), pero expande
+   el contenedor a todo el viewport visible, que es la mejor aproximacion disponible.
+   Ver handleTeamsFullscreen() en components/EventPlayer.tsx. */
+.aspect-video-wrapper.pseudo-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  padding-bottom: 0;
+  border-radius: 0;
+  z-index: 9999;
+}
+
 /* Select oscuro — opciones legibles en todos los browsers */
 select {
   color-scheme: dark;
