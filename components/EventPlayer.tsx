@@ -354,13 +354,18 @@ export default function EventPlayer({
       </div>
 
       {/* Contenido principal + chat lateral */}
+      {/* El cap de maxWidth de abajo (100vh - CHROME_PX) evita que el video, al tener aspect-ratio
+          fijo via padding-bottom, crezca mas alla del alto real disponible dentro del flex-1 de
+          BrandedLayout y quede recortado contra su overflow-hidden. CHROME_PX es una estimacion
+          conservadora del header + esta barra + footer; se dejo con margen extra porque BrandedLayout
+          puede sumar una franja de patrocinadores debajo del player en eventos que la tengan. */}
       <div className="flex flex-1 min-h-0">
         {/* Player */}
         <div className="flex-1 flex items-center justify-center bg-black p-4 sm:p-8 min-w-0">
           {resolvedTier === 'youtube' && embedUrl ? (
             <div
               className="w-full"
-              style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
+              style={{ maxWidth: 'min(100%, calc((100vh - 220px) * 16 / 9))' }}
             >
               <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
                 <iframe
@@ -374,7 +379,7 @@ export default function EventPlayer({
           ) : resolvedTier === 'teams' && youtubeUrl ? (
             <div
               className="w-full"
-              style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
+              style={{ maxWidth: 'min(100%, calc((100vh - 220px) * 16 / 9))' }}
             >
               <div ref={teamsWrapperRef} className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl relative group">
                 <iframe
@@ -398,7 +403,7 @@ export default function EventPlayer({
           ) : resolvedTier === 'cloudflare' && cfIframeUrl ? (
             <div
               className="w-full"
-              style={{ maxWidth: 'min(100%, calc((100vh - 160px) * 16 / 9))' }}
+              style={{ maxWidth: 'min(100%, calc((100vh - 220px) * 16 / 9))' }}
             >
               <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
                 <iframe

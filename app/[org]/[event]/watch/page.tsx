@@ -9,7 +9,7 @@ import { verifyAttendeeToken } from '@/lib/auth'
 import { getEventLiveState } from '@/lib/event-live-state'
 import BrandedLayout from '@/components/BrandedLayout'
 import EventPlayer from '@/components/EventPlayer'
-import type { Organization } from '@/types'
+import type { EventSponsor, Organization } from '@/types'
 
 interface PageProps {
   params: Promise<{ org: string; event: string }>
@@ -154,6 +154,7 @@ export default async function WatchPage({ params }: PageProps) {
     logo_url?: string
     background_color?: string
     agenda_url?: string
+    sponsors?: EventSponsor[]
   }
 
   return (
@@ -162,6 +163,7 @@ export default async function WatchPage({ params }: PageProps) {
       organization={organization as Organization}
       eventTitle={eventData.title}
       fullHeight
+      sponsors={branding.sponsors ?? []}
     >
       <EventPlayer
         sessionId={jwtPayload.sessionId}
