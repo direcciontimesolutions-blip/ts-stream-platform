@@ -1,7 +1,7 @@
 'use client'
 // components/EventPlayer.tsx — YouTube embed + heartbeat + chat + kick detection + polls
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { extractYouTubeVideoId } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Message } from '@/types'
@@ -49,6 +49,45 @@ export default function EventPlayer({
 }: EventPlayerProps) {
   const endedRef = useRef(false)
   const teamsWrapperRef = useRef<HTMLDivElement>(null)
+
+  // Alto/ancho maximo real del player, medido contra el contenedor flex que lo
+  // envuelve (no adivinado con un "100vh - constante"). El wrapper .aspect-video-wrapper
+  // usa el truco clasico de padding-bottom:56.25%, que calcula su alto a partir de su
+  // ANCHO — no tiene forma de saber cuanto alto le queda disponible de verdad. Antes se
+  // le pasaba un maxWidth fijo basado en una estimacion de "chrome" (header+barra+footer)
+  // en pixeles; esa estimacion se volvio incorrecta al agregar la franja de patrocinadores
+  // (altura variable: 1 fila en pantallas anchas, 2 filas si los logos hacen wrap en
+  // pantallas angostas), y el player quedaba mas alto de lo que realmente cabia,
+  // solapandose contra la franja de abajo. Medir el contenedor real con ResizeObserver
+  // es correcto para cualquier combinacion de header/barra/sponsors/footer, sin adivinar.
+  const playerAreaRef = useRef<HTMLDivElement>(null)
+  const [playerMaxWidth, setPlayerMaxWidth] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    const el = playerAreaRef.current
+    if (!el) return
+
+    function recalc() {
+      if (!el) return
+      const { clientWidth, clientHeight } = el
+      if (clientWidth <= 0 || clientHeight <= 0) return
+      setPlayerMaxWidth(Math.min(clientWidth, clientHeight * (16 / 9)))
+    }
+
+    recalc()
+    const ro = new ResizeObserver(recalc)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Fallback antes de la primera medicion (SSR / primer paint): mismo criterio anterior,
+  // conservador, solo para evitar un flash mientras el ResizeObserver mide el DOM real.
+  const playerMaxWidthStyle: React.CSSProperties = {
+    maxWidth:
+      playerMaxWidth != null
+        ? `${Math.floor(playerMaxWidth)}px`
+        : 'min(100%, calc((100vh - 220px) * 16 / 9))',
+  }
 
   // Fullscreen del contenedor propio, no del iframe — Safari iOS pausa el video
   // si se deja que el <video> nativo dentro del iframe de Teams (cross-origin) entre
@@ -354,18 +393,19 @@ export default function EventPlayer({
       </div>
 
       {/* Contenido principal + chat lateral */}
-      {/* El cap de maxWidth de abajo (100vh - CHROME_PX) evita que el video, al tener aspect-ratio
-          fijo via padding-bottom, crezca mas alla del alto real disponible dentro del flex-1 de
-          BrandedLayout y quede recortado contra su overflow-hidden. CHROME_PX es una estimacion
-          conservadora del header + esta barra + footer; se dejo con margen extra porque BrandedLayout
-          puede sumar una franja de patrocinadores debajo del player en eventos que la tengan. */}
+      {/* El maxWidth de los wrappers de abajo (playerMaxWidthStyle) evita que el video, al tener
+          aspect-ratio fijo via padding-bottom, crezca mas alla del alto real disponible dentro del
+          flex-1 de BrandedLayout. Se mide con ResizeObserver contra playerAreaRef (ver arriba) en
+          vez de adivinar un "100vh - constante": eso permite que header, barra, footer y la franja
+          de patrocinadores (altura variable segun haga wrap o no) cambien libremente sin volver a
+          romper el calculo — el player nunca se solapa contra lo que venga despues. */}
       <div className="flex flex-1 min-h-0">
         {/* Player */}
-        <div className="flex-1 flex items-center justify-center bg-black p-4 sm:p-8 min-w-0">
+        <div ref={playerAreaRef} className="flex-1 flex items-center justify-center bg-black p-4 sm:p-8 min-w-0 min-h-0">
           {resolvedTier === 'youtube' && embedUrl ? (
             <div
               className="w-full"
-              style={{ maxWidth: 'min(100%, calc((100vh - 220px) * 16 / 9))' }}
+              style={playerMaxWidthStyle}
             >
               <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
                 <iframe
@@ -379,7 +419,7 @@ export default function EventPlayer({
           ) : resolvedTier === 'teams' && youtubeUrl ? (
             <div
               className="w-full"
-              style={{ maxWidth: 'min(100%, calc((100vh - 220px) * 16 / 9))' }}
+              style={playerMaxWidthStyle}
             >
               <div ref={teamsWrapperRef} className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl relative group">
                 <iframe
@@ -403,7 +443,7 @@ export default function EventPlayer({
           ) : resolvedTier === 'cloudflare' && cfIframeUrl ? (
             <div
               className="w-full"
-              style={{ maxWidth: 'min(100%, calc((100vh - 220px) * 16 / 9))' }}
+              style={playerMaxWidthStyle}
             >
               <div className="aspect-video-wrapper rounded-xl overflow-hidden shadow-2xl">
                 <iframe
