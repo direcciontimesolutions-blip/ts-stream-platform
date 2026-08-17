@@ -2,6 +2,7 @@
 
 import type { EventBranding, Organization } from '@/types'
 import Image from 'next/image'
+import TimeSolutionsBrandStrip from './TimeSolutionsBrandStrip'
 
 interface BrandedLayoutProps {
   children: React.ReactNode
@@ -69,9 +70,9 @@ export default function BrandedLayout({
       {/* Contenido principal */}
       <main className="flex-1 flex flex-col min-h-0">{children}</main>
 
-      {/* Footer minimal */}
-      <footer className="text-center py-4 text-white/20 text-xs">
-        Powered by Time Solutions
+      {/* Footer — mismo tratamiento de marca que la pagina de registro, version compacta */}
+      <footer className="border-t border-white/10 shrink-0">
+        <TimeSolutionsBrandStrip variant="footer" />
       </footer>
     </div>
   )
