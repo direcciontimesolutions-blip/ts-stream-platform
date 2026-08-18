@@ -158,6 +158,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     open_registration?: boolean
     carousel_images?: string[]
     sponsors?: EventSponsor[]
+    background_video_url?: string
   }
 
   const isOpenRegistration = branding.open_registration === true
@@ -167,6 +168,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
   const logoUrl = branding.logo_url ?? organization.logo_url
   const carouselImages = branding.carousel_images ?? []
   const sponsors = branding.sponsors ?? []
+  const backgroundVideoUrl = branding.background_video_url ?? null
   const diamondSponsors = sponsors.filter((s) => s.tier === 'diamond')
   const regularSponsors = sponsors.filter((s) => s.tier !== 'diamond')
 
@@ -179,19 +181,39 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
       {/* ── Panel izquierdo: identidad del evento ── */}
       <div
         className="relative lg:w-[58%] flex flex-col items-center justify-center px-10 py-20 overflow-hidden"
-        style={{
-          background: `radial-gradient(ellipse 80% 70% at 35% 55%, ${primaryColor}18 0%, transparent 100%), ${bgColor}`,
-        }}
+        style={{ backgroundColor: bgColor }}
       >
+        {/* Loop de video de fondo — detras del scrim y de todo el contenido */}
+        {backgroundVideoUrl && (
+          <video
+            className="absolute inset-0 w-full h-full object-cover object-top z-0"
+            src={backgroundVideoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            aria-hidden
+          />
+        )}
+
+        {/* Scrim: degradado radial + base semitransparente para mantener contraste del texto sobre el video */}
+        <div
+          className="absolute inset-0 z-[1] pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 80% 70% at 35% 55%, ${primaryColor}18 0%, transparent 100%), ${bgColor}CC`,
+          }}
+          aria-hidden
+        />
+
         {/* Barra accent superior */}
         <div
-          className="absolute top-0 left-0 right-0 h-[3px]"
+          className="absolute top-0 left-0 right-0 h-[3px] z-10"
           style={{ backgroundColor: primaryColor }}
         />
 
         {/* Círculo decorativo inferior */}
         <div
-          className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-[0.04] pointer-events-none"
+          className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-[0.04] pointer-events-none z-10"
           style={{ backgroundColor: primaryColor }}
           aria-hidden
         />
@@ -299,7 +321,7 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
         </div>
 
         {/* Footer Powered by */}
-        <div className="absolute bottom-7 left-0 right-0 flex justify-center">
+        <div className="absolute bottom-7 left-0 right-0 flex justify-center z-10">
           <span className="text-white/20 text-xs tracking-wide">
             Powered by Time Solutions
           </span>

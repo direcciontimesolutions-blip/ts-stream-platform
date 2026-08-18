@@ -34,6 +34,10 @@ export interface EventBranding {
   agenda_url?: string
   // Patrocinadores mostrados en el panel izquierdo de la landing, debajo del titulo/descripcion
   sponsors?: EventSponsor[]
+  // Loop de video (MP4, sin audio) como fondo del panel izquierdo de la landing, detras del
+  // degradado radial y de todo el contenido. Opcional — si no esta definido, el panel usa
+  // solo el degradado radial de siempre.
+  background_video_url?: string
 }
 
 export interface EventSponsor {
