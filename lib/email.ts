@@ -37,6 +37,7 @@ export async function sendEmail(opts: {
   to: string
   subject: string
   text: string
+  attachments?: { filename: string; content: Buffer; contentType?: string }[]
 }): Promise<void> {
   const transporter = getTransporter()
   await transporter.sendMail({
@@ -44,5 +45,6 @@ export async function sendEmail(opts: {
     to: opts.to,
     subject: opts.subject,
     text: opts.text,
+    attachments: opts.attachments,
   })
 }

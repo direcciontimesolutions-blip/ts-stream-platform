@@ -64,6 +64,7 @@ export default function EventDetailPage() {
   const [importFeedback, setImportFeedback] = useState<ImportResult | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [sendingCertificates, setSendingCertificates] = useState(false)
 
   // Cloudflare Stream (Tier 1) — subida directa + chequeo de estado
   const [cfUploadPct, setCfUploadPct] = useState<number | null>(null)
@@ -373,6 +374,41 @@ export default function EventDetailPage() {
       a.click()
       URL.revokeObjectURL(url)
     } finally { setExportingCsv(false) }
+  }
+
+  async function handleSendCertificates() {
+    if (sendingCertificates) return
+    setSendingCertificates(true)
+    try {
+      // 1. Contar elegibles primero (sin enviar nada) para la confirmacion previa.
+      const countRes = await fetch(`/api/admin/events/${eventId}/send-certificates`)
+      if (!countRes.ok) { alert('Error consultando asistentes elegibles.'); return }
+      const count = await countRes.json()
+
+      if (count.elegibles === 0) {
+        alert(`Ningún asistente cumple el mínimo de ${count.umbral_minutos} minutos conectado todavía. No se envía nada.`)
+        return
+      }
+
+      const nota = count.elegibles_sin_correo > 0
+        ? `\n\nNota: ${count.elegibles_sin_correo} elegible(s) no tienen correo registrado y no recibirán nada.`
+        : ''
+      const confirmMsg = `Se enviará el certificado de asistencia (PDF, plantilla PROVISIONAL) por correo real a ${count.elegibles} de ${count.total_asistentes} asistente(s) — quienes estuvieron conectados al menos ${count.umbral_minutos} minutos.${nota}\n\n¿Confirmas el envío?`
+      if (!window.confirm(confirmMsg)) return
+
+      // 2. Envio real.
+      const sendRes = await fetch(`/api/admin/events/${eventId}/send-certificates`, { method: 'POST' })
+      const result = await sendRes.json()
+      if (!sendRes.ok) { alert(`Error enviando certificados: ${result.error ?? 'error desconocido'}`); return }
+
+      const fallosDetalle = (result.detalle_fallos ?? [])
+        .map((f: { nombre: string; email: string | null; error: string }) => `- ${f.nombre} (${f.email ?? 'sin correo'}): ${f.error}`)
+        .join('\n')
+      alert(
+        `Certificados enviados: ${result.enviados}/${result.elegibles}.` +
+        (result.fallidos > 0 ? `\nFallidos: ${result.fallidos}\n${fallosDetalle}` : '')
+      )
+    } finally { setSendingCertificates(false) }
   }
 
   async function handleCreatePoll(e: React.FormEvent) {
@@ -1020,6 +1056,14 @@ export default function EventDetailPage() {
                 title="Descarga un CSV con tiempo de conexión y número de sesiones por asistente"
               >
                 {exportingCsv ? 'Generando...' : 'Exportar CSV'}
+              </button>
+              <button
+                onClick={handleSendCertificates}
+                disabled={sendingCertificates || attendees.length === 0}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50"
+                title="Genera y envía el certificado PDF (plantilla provisional) a quienes estuvieron ≥30 min conectados"
+              >
+                {sendingCertificates ? 'Procesando...' : 'Generar y enviar certificados'}
               </button>
             </div>
           </div>
