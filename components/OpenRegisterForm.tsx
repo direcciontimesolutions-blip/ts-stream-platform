@@ -12,7 +12,7 @@ interface Props {
 
 export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
   const router = useRouter()
-  const [form, setForm] = useState({ full_name: '', email: '', company: '', phone: '' })
+  const [form, setForm] = useState({ full_name: '', document_id: '', email: '', company: '', phone: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,7 +22,7 @@ export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
   }
 
   const isValid =
-    form.full_name.trim() && form.email.trim() && form.company.trim() && form.phone.trim()
+    form.full_name.trim() && form.document_id.trim() && form.email.trim() && form.company.trim() && form.phone.trim()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -37,6 +37,7 @@ export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
           org,
           event,
           full_name: form.full_name.trim(),
+          document_id: form.document_id.trim(),
           email: form.email.trim(),
           company: form.company.trim(),
           phone: form.phone.trim(),
@@ -81,6 +82,24 @@ export default function OpenRegisterForm({ org, event, primaryColor }: Props) {
           autoComplete="name"
           className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
           placeholder="Juan García"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="document_id" className="block text-sm font-medium text-white/70 mb-1.5">
+          Cédula o documento de identidad
+        </label>
+        <input
+          id="document_id"
+          name="document_id"
+          type="text"
+          value={form.document_id}
+          onChange={handleChange}
+          required
+          autoComplete="off"
+          inputMode="text"
+          className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+          placeholder="1020304050"
         />
       </div>
 

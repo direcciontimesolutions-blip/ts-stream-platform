@@ -12,6 +12,7 @@ import type { Event, Organization, ImportResult, EventModerator } from '@/types'
 interface AttendeeWithKick {
   id: string
   full_name: string
+  document_id: string | null
   email: string | null
   company: string | null
   phone: string | null
@@ -1049,6 +1050,7 @@ export default function EventDetailPage() {
                   <thead>
                     <tr className="border-b border-white/10">
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Nombre</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Documento</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Email</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Empresa</th>
                       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Telefono</th>
@@ -1062,6 +1064,7 @@ export default function EventDetailPage() {
                     {attendees.map((attendee, idx) => (
                       <tr key={attendee.id} className={`border-b border-white/5 ${idx === attendees.length - 1 ? 'border-b-0' : ''}`}>
                         <td className="px-5 py-3 text-sm text-white">{attendee.full_name}</td>
+                        <td className="px-5 py-3 text-sm text-gray-400 hidden sm:table-cell">{attendee.document_id ?? '—'}</td>
                         <td className="px-5 py-3 text-sm text-gray-400 hidden sm:table-cell">{attendee.email ?? '—'}</td>
                         <td className="px-5 py-3 text-sm text-gray-400 hidden md:table-cell">{attendee.company ?? '—'}</td>
                         <td className="px-5 py-3 text-sm text-gray-400 hidden md:table-cell">{attendee.phone ?? '—'}</td>

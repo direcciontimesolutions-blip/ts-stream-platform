@@ -72,6 +72,7 @@ export interface Attendee {
   event_id: string
   organization_id: string
   full_name: string
+  document_id: string | null
   email: string | null
   company: string | null
   phone: string | null
@@ -86,6 +87,7 @@ export interface AttendeePublic {
   event_id: string
   organization_id: string
   full_name: string
+  document_id: string | null
   email: string | null
   company: string | null
   phone: string | null

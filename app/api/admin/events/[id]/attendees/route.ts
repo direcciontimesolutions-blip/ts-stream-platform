@@ -24,7 +24,7 @@ export async function GET(
 
     const { data: attendees, error } = await supabase
       .from('attendees')
-      .select('id, full_name, email, company, phone, username, role, created_at')
+      .select('id, full_name, document_id, email, company, phone, username, role, created_at')
       .eq('event_id', eventId)
       .order('created_at', { ascending: true })
 

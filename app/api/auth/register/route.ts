@@ -13,15 +13,23 @@ export async function POST(req: NextRequest) {
       org?: string
       event?: string
       full_name?: string
+      document_id?: string
       email?: string
       company?: string
       phone?: string
     }
 
-    const { org, event, full_name, email, company, phone } = body
+    const { org, event, full_name, document_id, email, company, phone } = body
 
-    if (!org || !event || !full_name?.trim() || !email?.trim() || !company?.trim() || !phone?.trim()) {
-      return NextResponse.json({ error: 'Nombre, correo, empresa y telefono son requeridos.' }, { status: 400 })
+    if (!org || !event || !full_name?.trim() || !document_id?.trim() || !email?.trim() || !company?.trim() || !phone?.trim()) {
+      return NextResponse.json({ error: 'Nombre, documento, correo, empresa y telefono son requeridos.' }, { status: 400 })
+    }
+
+    // Normalizado: solo letras/digitos, sin puntos/espacios/guiones — para que "123.456"
+    // y "123456" no se traten como personas distintas en reportes o certificados.
+    const normalizedDocumentId = document_id.trim().replace(/[.\s-]/g, '').toUpperCase()
+    if (!normalizedDocumentId) {
+      return NextResponse.json({ error: 'Documento de identidad invalido.' }, { status: 400 })
     }
 
     const supabase = createServiceRoleClient()
@@ -82,6 +90,7 @@ export async function POST(req: NextRequest) {
           event_id: eventData.id,
           organization_id: organization.id,
           full_name: full_name.trim(),
+          document_id: normalizedDocumentId,
           email: normalizedEmail,
           company: company.trim(),
           phone: phone.trim(),

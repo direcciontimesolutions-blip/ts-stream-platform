@@ -68,7 +68,7 @@ export async function GET(
 
     const { data: attendees, error: attendeesError } = await supabase
       .from('attendees')
-      .select('id, full_name, email, company, phone')
+      .select('id, full_name, document_id, email, company, phone')
       .eq('event_id', eventId)
 
     if (attendeesError) {
@@ -127,6 +127,7 @@ export async function GET(
       const agg = byAttendee.get(a.id)
       return {
         full_name: a.full_name ?? '',
+        document_id: a.document_id ?? '',
         email: a.email ?? '',
         company: a.company ?? '',
         phone: a.phone ?? '',
@@ -142,6 +143,7 @@ export async function GET(
 
     const header = [
       'Nombre completo',
+      'Cedula / Documento',
       'Correo',
       'Empresa',
       'Telefono',
@@ -155,6 +157,7 @@ export async function GET(
     for (const r of rows) {
       lines.push([
         csvEscape(r.full_name),
+        csvEscape(r.document_id),
         csvEscape(r.email),
         csvEscape(r.company),
         csvEscape(r.phone),
