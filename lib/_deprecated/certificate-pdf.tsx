@@ -1,19 +1,21 @@
-// lib/certificate-pdf.tsx — Documento PDF: Certificado de Asistencia personalizado
+// lib/_deprecated/certificate-pdf.tsx — DEPRECADO 19 ago 2026, NO SE USA MAS.
 //
-// Mismo enfoque que lib/acta-pdf.tsx (@react-pdf/renderer, ya en package.json — no se
-// agrega ninguna dependencia nueva). A diferencia del acta, este documento superpone
-// SOLO 5 campos dinamicos (nombre, cedula, evento, fecha, tiempo conectado) sobre una
-// imagen de fondo completa (public/certificates/placeholder-fondo.png) que trae todo el
-// texto estatico (titulo, labels, firmas, footer) horneado en la imagen.
+// Movido desde lib/certificate-pdf.tsx cuando la SCP entrego el diseño OFICIAL del
+// certificado (produccion/simposio-pediatria/certificado.pptx). Este generador dibujaba
+// SOLO 5 campos dinamicos sobre una imagen de fondo PROVISIONAL marcada "NO OFICIAL"
+// (public/certificates/placeholder-fondo.png) via @react-pdf/renderer — nunca se penso
+// para verse identico al diseño real, era un placeholder a proposito.
 //
-// Cuando llegue el diseño oficial de la SCP: reemplazar SOLO el archivo
-// public/certificates/placeholder-fondo.png (ver scripts/generate-certificate-placeholder-bg.mjs
-// para como se genero el provisional) por el diseño real, exportado a la misma proporcion
-// A4 horizontal (o ajustar BG_ASPECT_RATIO abajo si la proporcion cambia). Las posiciones
-// de los 5 campos dinamicos son PROPORCIONALES al tamaño de pagina (fracciones 0-1 de
-// PAGE_W/PAGE_H), asi que si el diseño real ubica esos mismos bloques en otra zona del
-// certificado, solo hay que ajustar las constantes FIELD_POS de abajo — nunca la logica
-// de generacion en send-certificates/route.ts.
+// El generador REAL ahora es scripts/certificates/generate-certificates.ps1: abre el
+// PPTX real de la SCP via automatizacion COM de PowerPoint, inserta el nombre del
+// asistente en la linea en blanco que el propio archivo trae para eso, y exporta esa
+// copia a PDF — visualmente identico al diseño oficial porque ES el diseño oficial, no
+// una recreacion. Ver scripts/certificates/README.md para el pipeline completo (3 pasos,
+// corre LOCAL en Windows con PowerPoint instalado, no en Vercel).
+//
+// Este archivo se deja aqui sin usar (no importado desde ningun route.ts) por si hace
+// falta volver atras rapido o reusar el patron "imagen de fondo + campos superpuestos"
+// para un evento futuro sin plantilla oficial propia. NO borrar sin avisar.
 
 import React from 'react'
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'

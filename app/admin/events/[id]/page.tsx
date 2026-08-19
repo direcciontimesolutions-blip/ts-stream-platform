@@ -376,37 +376,34 @@ export default function EventDetailPage() {
     } finally { setExportingCsv(false) }
   }
 
+  // Este evento (SCP Antioquia, Primer Simposio en Pediatria) usa el diseño OFICIAL del
+  // certificado entregado por la SCP (PPTX real), que solo puede generarse con fidelidad
+  // exacta via automatizacion de PowerPoint (COM) — eso requiere Windows + PowerPoint
+  // instalado, algo que Vercel (Linux, este panel web) no puede correr. Por eso este boton
+  // YA NO envia nada desde aqui: solo informa cuantos asistentes son elegibles hoy. El
+  // envio real corre LOCALMENTE desde scripts/certificates/ (ver scripts/certificates/README.md),
+  // ejecutado por el equipo tecnico de Time Solutions despues del evento. El viejo generador
+  // (react-pdf sobre una imagen de fondo, plantilla PROVISIONAL "NO OFICIAL") quedo en
+  // lib/_deprecated/certificate-pdf.tsx — no se usa mas para este evento.
   async function handleSendCertificates() {
     if (sendingCertificates) return
     setSendingCertificates(true)
     try {
-      // 1. Contar elegibles primero (sin enviar nada) para la confirmacion previa.
       const countRes = await fetch(`/api/admin/events/${eventId}/send-certificates`)
       if (!countRes.ok) { alert('Error consultando asistentes elegibles.'); return }
       const count = await countRes.json()
 
       if (count.elegibles === 0) {
-        alert(`Ningún asistente cumple el mínimo de ${count.umbral_minutos} minutos conectado todavía. No se envía nada.`)
+        alert(`Ningún asistente cumple el mínimo de ${count.umbral_minutos} minutos conectado todavía. Aún no hay elegibles.`)
         return
       }
 
       const nota = count.elegibles_sin_correo > 0
-        ? `\n\nNota: ${count.elegibles_sin_correo} elegible(s) no tienen correo registrado y no recibirán nada.`
+        ? `\n\nNota: ${count.elegibles_sin_correo} elegible(s) no tienen correo registrado y no recibirían nada.`
         : ''
-      const confirmMsg = `Se enviará el certificado de asistencia (PDF, plantilla PROVISIONAL) por correo real a ${count.elegibles} de ${count.total_asistentes} asistente(s) — quienes estuvieron conectados al menos ${count.umbral_minutos} minutos.${nota}\n\n¿Confirmas el envío?`
-      if (!window.confirm(confirmMsg)) return
-
-      // 2. Envio real.
-      const sendRes = await fetch(`/api/admin/events/${eventId}/send-certificates`, { method: 'POST' })
-      const result = await sendRes.json()
-      if (!sendRes.ok) { alert(`Error enviando certificados: ${result.error ?? 'error desconocido'}`); return }
-
-      const fallosDetalle = (result.detalle_fallos ?? [])
-        .map((f: { nombre: string; email: string | null; error: string }) => `- ${f.nombre} (${f.email ?? 'sin correo'}): ${f.error}`)
-        .join('\n')
       alert(
-        `Certificados enviados: ${result.enviados}/${result.elegibles}.` +
-        (result.fallidos > 0 ? `\nFallidos: ${result.fallidos}\n${fallosDetalle}` : '')
+        `${count.elegibles} de ${count.total_asistentes} asistente(s) cumplen el mínimo de ${count.umbral_minutos} minutos conectado y son elegibles a certificado.${nota}\n\n` +
+        `Este evento usa el diseño OFICIAL del certificado de la SCP (PowerPoint). La generación y el envío se ejecutan de forma LOCAL por el equipo técnico de Time Solutions (automatización de PowerPoint — no disponible en este panel web ni en Vercel). Este botón solo informa el conteo, no dispara ningún envío.`
       )
     } finally { setSendingCertificates(false) }
   }
@@ -1061,9 +1058,9 @@ export default function EventDetailPage() {
                 onClick={handleSendCertificates}
                 disabled={sendingCertificates || attendees.length === 0}
                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50"
-                title="Genera y envía el certificado PDF (plantilla provisional) a quienes estuvieron ≥30 min conectados"
+                title="Certificados con diseño oficial SCP: el envío corre localmente (equipo técnico). Este botón solo muestra cuántos asistentes son elegibles (≥30 min conectados)."
               >
-                {sendingCertificates ? 'Procesando...' : 'Generar y enviar certificados'}
+                {sendingCertificates ? 'Procesando...' : 'Ver elegibles a certificado'}
               </button>
             </div>
           </div>
