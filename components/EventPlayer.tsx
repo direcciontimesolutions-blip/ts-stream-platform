@@ -167,8 +167,16 @@ export default function EventPlayer({
   // Heartbeat + kick/ended detection
   // No usamos beforeunload porque dispara en refresh también y terminaría la sesión,
   // permitiendo que otro dispositivo entre. El logout explícito maneja el cierre correcto.
+  //
+  // visibilitychange: Safari iOS (y otros navegadores en background) pausan/ralentizan
+  // los timers de una pestaña oculta, asi que el setInterval de 30s puede saltarse varios
+  // ciclos mientras la pestaña esta en segundo plano. Eso dejaba last_ping_at viejo por
+  // mas de 5 minutos sin que la sesion estuviera realmente kickeada/deslogueada, lo que
+  // alimentaba el loop de redireccion registro↔watch (ver page.tsx). Al volver a primer
+  // plano disparamos un ping INMEDIATO (no esperar al proximo tick de 30s) para refrescar
+  // last_ping_at lo antes posible y reducir esa ventana real.
   useEffect(() => {
-    const heartbeat = setInterval(async () => {
+    async function ping() {
       try {
         const res = await fetch(`/api/sessions/${sessionId}/ping`, { method: 'PATCH' })
         if (res.status === 401) {
@@ -179,10 +187,18 @@ export default function EventPlayer({
           window.location.href = `/${org}/${event}`
         }
       } catch {}
-    }, 30_000)
+    }
+
+    const heartbeat = setInterval(ping, 30_000)
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') ping()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       clearInterval(heartbeat)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [sessionId, org, event])
 

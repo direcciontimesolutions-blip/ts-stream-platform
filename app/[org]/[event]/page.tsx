@@ -131,7 +131,15 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
     eventData.end_at
   )
 
-  // 3. Redirigir si ya tiene sesión válida y evento está live
+  // 3. Redirigir si ya tiene sesión válida, fresca, y el evento está live
+  // Antes solo se revisaba kicked_at/logout_at, sin el mismo criterio de frescura
+  // (last_ping_at/login_at > 5 min) que /watch SI aplica (ver watch/page.tsx). Cuando
+  // el heartbeat de EventPlayer se pausaba por backgrounding (ej. Safari iOS), la sesion
+  // quedaba "vieja" sin estar kickeada/deslogueada: esta pagina redirigia a /watch,
+  // /watch la encontraba vieja y redirigia de vuelta aqui — loop infinito. Ahora aplica
+  // el MISMO umbral: si la sesion esta vieja, no redirige, deja ver el formulario de
+  // registro normal (el login/registro ya invalida sesiones previas del mismo asistente
+  // por correo, asi que volver a registrarse desde aqui es seguro e idempotente).
   if (!kicked && isLive) {
     const cookieStore = await cookies()
     const token = cookieStore.get('ts_stream_token')?.value
@@ -140,10 +148,13 @@ export default async function EventLoginPage({ params, searchParams }: PageProps
       if (payload) {
         const { data: sessionCheck } = await supabase
           .from('sessions')
-          .select('kicked_at, logout_at')
+          .select('kicked_at, logout_at, last_ping_at, login_at')
           .eq('id', payload.sessionId)
           .maybeSingle()
-        if (sessionCheck && !sessionCheck.kicked_at && !sessionCheck.logout_at) {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+        const lastActivity = sessionCheck?.last_ping_at ?? sessionCheck?.login_at
+        const isFresh = !!lastActivity && lastActivity >= fiveMinutesAgo
+        if (sessionCheck && !sessionCheck.kicked_at && !sessionCheck.logout_at && isFresh) {
           redirect(`/${org}/${event}/watch`)
         }
       }
