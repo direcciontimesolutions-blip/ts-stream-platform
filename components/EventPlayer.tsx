@@ -152,9 +152,10 @@ export default function EventPlayer({
   const [ratingAnswer, setRatingAnswer] = useState<number>(0)
   const dismissedPollIdRef = useRef<string | null>(null)
 
-  // Cloudflare Stream (Tier 1) — URL firmada, se pide una sola vez al montar
+  // Cloudflare Stream (Tier 1) — URL firmada
   const [cfIframeUrl, setCfIframeUrl] = useState<string | null>(null)
   const [cfError, setCfError] = useState<string | null>(null)
+  const cfActiveUidRef = useRef<string | null>(null)
 
   const endSession = useCallback(async () => {
     if (endedRef.current) return
@@ -202,22 +203,38 @@ export default function EventPlayer({
     }
   }, [sessionId, org, event])
 
-  // Cloudflare Stream (Tier 1) — pide la URL firmada una vez si el evento usa este tier
+  // Cloudflare Stream (Tier 1) — URL firmada, consultada periodicamente (no solo al montar).
+  // Necesario para el sistema de respaldo en paralelo: si el admin hace failover (cambia
+  // cual Live Input esta activo) mientras el asistente ya esta viendo, su iframe original
+  // apunta al uid VIEJO y se queda congelado — sin este polling, solo se recuperaria si la
+  // persona refresca la pagina a mano, algo que no se puede garantizar en pleno evento.
+  // Compara contra el uid actual (no la URL completa, que cambia siempre porque el JWT
+  // firmado lleva "iat") para no reiniciar el iframe de gente que sigue viendo lo mismo.
   useEffect(() => {
     if (streamingTier !== 'cloudflare' || !cloudflareStreamId) return
     let active = true
-    fetch('/api/stream/signed-url')
-      .then(async (res) => {
+
+    async function fetchSignedUrl() {
+      try {
+        const res = await fetch('/api/stream/signed-url')
         const data = await res.json()
         if (!active) return
         if (!res.ok) {
           setCfError(data.error ?? 'No se pudo cargar la transmision.')
           return
         }
-        setCfIframeUrl(data.iframeUrl)
-      })
-      .catch(() => { if (active) setCfError('No se pudo cargar la transmision.') })
-    return () => { active = false }
+        if (data.uid !== cfActiveUidRef.current) {
+          cfActiveUidRef.current = data.uid
+          setCfIframeUrl(data.iframeUrl)
+        }
+      } catch {
+        if (active) setCfError('No se pudo cargar la transmision.')
+      }
+    }
+
+    fetchSignedUrl()
+    const interval = setInterval(fetchSignedUrl, 60_000)
+    return () => { active = false; clearInterval(interval) }
   }, [streamingTier, cloudflareStreamId])
 
   // Chat polling — auto-recuperable. Antes, una sola respuesta con chat_enabled:false

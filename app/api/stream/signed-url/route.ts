@@ -41,7 +41,9 @@ export async function GET() {
     }
 
     const iframeUrl = await getSignedIframeUrl(event.cloudflare_stream_id)
-    return NextResponse.json({ iframeUrl })
+    // uid incluido para que el cliente pueda distinguir "sigue siendo el mismo live input"
+    // (no reiniciar el iframe) de "hubo un failover" (sí actualizar) — ver EventPlayer.tsx.
+    return NextResponse.json({ iframeUrl, uid: event.cloudflare_stream_id })
   } catch (err) {
     console.error('Error generando URL firmada de Cloudflare Stream:', err)
     const message = err instanceof Error ? err.message : 'Error interno.'
