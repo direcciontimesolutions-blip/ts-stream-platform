@@ -156,10 +156,16 @@ export async function createLiveInput(opts?: { name?: string }): Promise<LiveInp
     method: 'POST',
     body: JSON.stringify({
       meta: opts?.name ? { name: opts.name } : undefined,
-      // requireSignedURLs aqui protege TANTO la vista en vivo como el VOD
-      // grabado automaticamente — sin esto, cualquiera con el uid podria ver
-      // la transmision sin pasar por el login de la plataforma.
-      recording: { mode: 'automatic', requireSignedURLs: true },
+      // IMPORTANTE (probado real el 20 ago 2026): recording.mode:'off' deja la
+      // conexion RTMPS estable, pero Cloudflare NUNCA muestra el video —
+      // "Stream has not started yet." indefinido. La reproduccion en vivo esta
+      // acoplada al mismo pipeline de almacenamiento que el VOD, no existe modo
+      // "solo streaming, cero storage" en la plataforma. Por eso mode:'automatic'
+      // es obligatorio para que la transmision se pueda ver, no opcional — y
+      // requiere tener contratado el addon de storage de Cloudflare Stream
+      // ($5/mes por 1000 min). deleteRecordingAfterDays:1 controla el costo:
+      // se borra solo, no se acumula almacenamiento indefinido.
+      recording: { mode: 'automatic', requireSignedURLs: true, deleteRecordingAfterDays: 1 },
     }),
   })
   const r = json.result
