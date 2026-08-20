@@ -1,16 +1,15 @@
 // scripts/certificates/send-certificates.ts — Paso 3 (ultimo) del pipeline LOCAL de
 // certificados. Lee el JSON de elegibles (paso 1, export-eligibles.ts) + los PDF ya
 // generados por PowerPoint COM (paso 2, generate-certificates.ps1) y envia un correo real
-// por asistente, con su PDF adjunto — mismo asunto/cuerpo y mismo canal SMTP
-// (lib/email.ts, nodemailer + Gmail) que ya usaba el endpoint viejo de Vercel, corriendo
-// aqui en la maquina local en vez de en el servidor.
+// por asistente, con su PDF adjunto — mismo canal de correo (lib/email.ts, Resend con
+// dominio propio verificado) que usa el resto de la plataforma, corriendo aqui en la
+// maquina local en vez de en el servidor.
 //
 // Uso:
 //   npx tsx scripts/certificates/send-certificates.ts <dataJsonPath> <pdfDir>
 //
-// Requiere SMTP_EMAIL / SMTP_APP_PASSWORD en el entorno — se cargan de
-// ts-stream-platform/.env.secrets.txt si existen ahi (no estan en .env.local, ver ese
-// archivo). Nunca imprime esos valores.
+// Requiere RESEND_API_KEY en el entorno — se carga de ts-stream-platform/.env.secrets.txt
+// si existe ahi (no esta en .env.local, ver ese archivo). Nunca imprime ese valor.
 //
 // Sin deduplicacion de envios (mismo criterio que el endpoint viejo documentaba): si se
 // corre dos veces, se reenvia a todos los elegibles del JSON de nuevo. Es una accion
@@ -62,8 +61,8 @@ async function main() {
     process.exit(1)
   }
 
-  if (!process.env.SMTP_EMAIL || !process.env.SMTP_APP_PASSWORD) {
-    console.error('SMTP_EMAIL / SMTP_APP_PASSWORD no configurados (revisar .env.secrets.txt).')
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY no configurada (revisar .env.secrets.txt).')
     process.exit(1)
   }
 

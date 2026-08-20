@@ -1,36 +1,34 @@
-// lib/email.ts — Envio de correo via SMTP de Gmail (nodemailer)
+// lib/email.ts — Envio de correo via Resend (dominio propio verificado)
 //
 // Canal de correo de emergencia (Plan B) cuando WhatsApp automatico no es
 // viable (requiere aprobacion de plantilla de Meta que puede no llegar a
-// tiempo para un evento puntual). Autentica con la cuenta SMTP_EMAIL/
-// SMTP_APP_PASSWORD (contraseña de aplicacion de Gmail) pero envia "From"
-// el alias info@timesolutions.com.co — Gmail lo permite porque el alias
-// ya esta verificado como "enviar como" del lado de esa cuenta.
+// tiempo para un evento puntual). Tambien usado para el envio de
+// certificados de asistencia (scripts/certificates/send-certificates.ts).
+//
+// Migrado el 20 ago 2026 desde Gmail SMTP (nodemailer): timesolutions.com.co
+// no tenia SPF/DKIM configurado para autorizar a Gmail a enviar en su
+// nombre, asi que Yahoo (y potencialmente otros proveedores estrictos)
+// rechazaba el correo (550 5.7.9 DKIM/SPF FAILURE, confirmado con casos
+// reales). Resend firma DKIM real sobre timesolutions.com.co (dominio
+// verificado, ver panel de Resend) — soluciona el problema de raiz en vez
+// de con un parche de remitente.
 
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 
-const FROM_ADDRESS = '"Time Solutions" <info@timesolutions.com.co>'
+const FROM_ADDRESS = 'Time Solutions <info@timesolutions.com.co>'
 
-let cachedTransporter: ReturnType<typeof nodemailer.createTransport> | null = null
+let cachedClient: Resend | null = null
 
-function getTransporter() {
-  if (cachedTransporter) return cachedTransporter
+function getClient() {
+  if (cachedClient) return cachedClient
 
-  const user = process.env.SMTP_EMAIL
-  const pass = process.env.SMTP_APP_PASSWORD
-
-  if (!user || !pass) {
-    throw new Error('SMTP_EMAIL / SMTP_APP_PASSWORD no configurados.')
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY no configurada.')
   }
 
-  cachedTransporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // STARTTLS sobre el puerto 587
-    auth: { user, pass },
-  })
-
-  return cachedTransporter
+  cachedClient = new Resend(apiKey)
+  return cachedClient
 }
 
 export async function sendEmail(opts: {
@@ -39,12 +37,22 @@ export async function sendEmail(opts: {
   text: string
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
 }): Promise<void> {
-  const transporter = getTransporter()
-  await transporter.sendMail({
+  const client = getClient()
+  const { data, error } = await client.emails.send({
     from: FROM_ADDRESS,
     to: opts.to,
     subject: opts.subject,
     text: opts.text,
-    attachments: opts.attachments,
+    attachments: opts.attachments?.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+    })),
   })
+
+  if (error) {
+    throw new Error(`Resend rechazo el envio a ${opts.to}: ${error.message}`)
+  }
+  if (!data?.id) {
+    throw new Error(`Resend no devolvio confirmacion de envio a ${opts.to}.`)
+  }
 }
