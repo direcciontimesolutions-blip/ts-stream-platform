@@ -58,6 +58,7 @@ export interface Event {
   streaming_tier: StreamingTier
   youtube_url: string | null
   cloudflare_stream_id: string | null
+  cloudflare_stream_id_backup: string | null
   branding: EventBranding
   chat_enabled: boolean
   created_at: string

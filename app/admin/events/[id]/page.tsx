@@ -79,6 +79,14 @@ export default function EventDetailPage() {
   const [cfLiveStatus, setCfLiveStatus] = useState<string | null>(null)
   const [cfCheckingLiveStatus, setCfCheckingLiveStatus] = useState(false)
 
+  // Cloudflare Stream — Live Input de RESPALDO (transmision en paralelo, ver failover)
+  const [cfCreatingBackup, setCfCreatingBackup] = useState(false)
+  const [cfBackupError, setCfBackupError] = useState<string | null>(null)
+  const [cfBackupCredentials, setCfBackupCredentials] = useState<{ rtmpsUrl: string; rtmpsStreamKey: string } | null>(null)
+  const [cfBackupStatus, setCfBackupStatus] = useState<string | null>(null)
+  const [cfCheckingBackupStatus, setCfCheckingBackupStatus] = useState(false)
+  const [cfFailingOver, setCfFailingOver] = useState(false)
+
   // Chat admin
   const [chatMessages, setChatMessages] = useState<AdminMessage[]>([])
   const [chatTab, setChatTab] = useState(false)
@@ -315,6 +323,70 @@ export default function EventDetailPage() {
       setCfLiveStatus(res.ok ? data.status : `error: ${data.error}`)
     } finally {
       setCfCheckingLiveStatus(false)
+    }
+  }
+
+  async function handleCreateBackupLiveInput() {
+    if (!event) return
+    if (event.cloudflare_stream_id_backup && !confirm('Ya existe un Live Input de respaldo. ¿Crear uno NUEVO y reemplazarlo?')) {
+      return
+    }
+    setCfCreatingBackup(true)
+    setCfBackupError(null)
+    setCfBackupCredentials(null)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/stream/live-input`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'backup' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCfBackupError(data.error ?? 'No se pudo crear el Live Input de respaldo.')
+        return
+      }
+      setCfBackupCredentials({ rtmpsUrl: data.rtmpsUrl, rtmpsStreamKey: data.rtmpsStreamKey })
+      setEvent((prev) => prev ? { ...prev, cloudflare_stream_id_backup: data.uid } : prev)
+    } catch (err) {
+      setCfBackupError(err instanceof Error ? err.message : 'Error de red.')
+    } finally {
+      setCfCreatingBackup(false)
+    }
+  }
+
+  async function handleCheckBackupStatus() {
+    if (!event?.cloudflare_stream_id_backup) return
+    setCfCheckingBackupStatus(true)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/stream/live-input?role=backup`)
+      const data = await res.json()
+      setCfBackupStatus(res.ok ? data.status : `error: ${data.error}`)
+    } finally {
+      setCfCheckingBackupStatus(false)
+    }
+  }
+
+  async function handleFailover() {
+    if (!event?.cloudflare_stream_id_backup) return
+    if (!confirm('¿Cambiar a la transmisión de RESPALDO ahora? Los asistentes empezarán a ver la señal de respaldo.')) return
+    setCfFailingOver(true)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/stream/failover`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error ?? 'No se pudo hacer el cambio.')
+        return
+      }
+      setEvent((prev) => prev ? {
+        ...prev,
+        cloudflare_stream_id: data.newActiveUid,
+        cloudflare_stream_id_backup: data.previousUid,
+      } : prev)
+      setCfLiveStatus(null)
+      setCfBackupStatus(null)
+      alert('Listo — la señal de respaldo ahora es la principal.')
+    } finally {
+      setCfFailingOver(false)
     }
   }
 
@@ -755,6 +827,67 @@ export default function EventDetailPage() {
                       </code>
                     </div>
                   </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-white/10 space-y-2">
+                <p className="text-gray-500 text-xs">
+                  Transmisión de RESPALDO (vMix envía en paralelo desde el arranque — no sale de Cloudflare, no sacrifica el control de acceso)
+                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={handleCreateBackupLiveInput}
+                    disabled={cfCreatingBackup}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 transition-colors disabled:opacity-50"
+                  >
+                    {cfCreatingBackup ? 'Creando...' : 'Crear Live Input de respaldo'}
+                  </button>
+                  {event.cloudflare_stream_id_backup && (
+                    <button
+                      onClick={handleCheckBackupStatus}
+                      disabled={cfCheckingBackupStatus}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 hover:bg-white/15 transition-colors disabled:opacity-50"
+                    >
+                      {cfCheckingBackupStatus ? 'Verificando...' : 'Verificar conexión de respaldo'}
+                    </button>
+                  )}
+                  {cfBackupStatus && (
+                    <span className={`text-xs ${cfBackupStatus === 'connected' ? 'text-green-400' : 'text-gray-400'}`}>
+                      {cfBackupStatus === 'connected' ? '● respaldo conectado y transmitiendo' : `estado: ${cfBackupStatus}`}
+                    </span>
+                  )}
+                </div>
+
+                {cfBackupError && <p className="text-red-400 text-xs">{cfBackupError}</p>}
+
+                {cfBackupCredentials && (
+                  <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
+                    <p className="text-amber-300 text-xs font-medium">
+                      Copia esto a vMix en una SEGUNDA salida de stream (Settings → Outputs → Stream #2) — transmitir a ambas al mismo tiempo:
+                    </p>
+                    <div>
+                      <p className="text-gray-500 text-[10px] uppercase">URL / Server</p>
+                      <code className="text-purple-300 font-mono text-xs bg-black/30 px-2 py-1 rounded block break-all">
+                        {cfBackupCredentials.rtmpsUrl}
+                      </code>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-[10px] uppercase">Stream Key</p>
+                      <code className="text-purple-300 font-mono text-xs bg-black/30 px-2 py-1 rounded block break-all">
+                        {cfBackupCredentials.rtmpsStreamKey}
+                      </code>
+                    </div>
+                  </div>
+                )}
+
+                {event.cloudflare_stream_id_backup && (
+                  <button
+                    onClick={handleFailover}
+                    disabled={cfFailingOver}
+                    className="mt-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-700 hover:bg-red-800 transition-colors disabled:opacity-50"
+                  >
+                    {cfFailingOver ? 'Cambiando...' : '🚨 Cambiar a la transmisión de respaldo AHORA'}
+                  </button>
                 )}
               </div>
             </div>

@@ -1,19 +1,29 @@
 // app/api/admin/events/[id]/stream/live-input/route.ts
 //
-// POST: crea un Live Input de Cloudflare Stream (destino RTMPS para vMix) y lo asocia
-// al evento (mismo campo cloudflare_stream_id que ya usa el flujo VOD — getSignedIframeUrl
-// funciona igual para un uid de live input que para uno de video subido). Las credenciales
-// RTMPS (url + stream key) se devuelven UNA sola vez en la respuesta — Cloudflare no las
-// vuelve a mostrar despues, hay que copiarlas a vMix en el momento.
+// POST: crea un Live Input de Cloudflare Stream (destino RTMPS para vMix). Body opcional
+// { role: 'primary' | 'backup' } — 'primary' (default) escribe cloudflare_stream_id (el
+// que ven los asistentes, getSignedIframeUrl lo usa igual que un uid de VOD); 'backup'
+// escribe cloudflare_stream_id_backup — un segundo Live Input que vMix alimenta EN
+// PARALELO desde el arranque (vMix soporta 5 salidas de stream simultaneas), para que ante
+// una falla del principal el cambio sea instantaneo (swap de uid activo, sin esperar
+// reconexion) y sin salir de Cloudflare — nunca se sacrifica el control de acceso de las
+// URLs firmadas, a diferencia de un respaldo en YouTube. Las credenciales RTMPS se
+// devuelven UNA sola vez, Cloudflare no las vuelve a mostrar despues.
 //
-// GET: estado de conexion actual del Live Input (si vMix esta transmitiendo ahora mismo).
+// GET: estado de conexion actual. ?role=backup consulta el Live Input de respaldo.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminUser, createServiceRoleClient } from '@/lib/supabase/server'
 import { createLiveInput, getLiveInputStatus } from '@/lib/cloudflare-stream'
 
+type Role = 'primary' | 'backup'
+
+function columnFor(role: Role) {
+  return role === 'backup' ? 'cloudflare_stream_id_backup' : 'cloudflare_stream_id'
+}
+
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -21,6 +31,10 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
     }
+
+    const body = await req.json().catch(() => ({})) as { role?: Role }
+    const role: Role = body.role === 'backup' ? 'backup' : 'primary'
+    const column = columnFor(role)
 
     const { id: eventId } = await params
     const supabase = createServiceRoleClient()
@@ -34,11 +48,11 @@ export async function POST(
       return NextResponse.json({ error: 'Evento no encontrado.' }, { status: 404 })
     }
 
-    const live = await createLiveInput({ name: event.title })
+    const live = await createLiveInput({ name: `${event.title}${role === 'backup' ? ' (respaldo)' : ''}` })
 
     const { error: updateError } = await supabase
       .from('events')
-      .update({ cloudflare_stream_id: live.uid })
+      .update({ [column]: live.uid })
       .eq('id', eventId)
 
     if (updateError) {
@@ -49,6 +63,7 @@ export async function POST(
       uid: live.uid,
       rtmpsUrl: live.rtmpsUrl,
       rtmpsStreamKey: live.rtmpsStreamKey,
+      role,
     })
   } catch (err) {
     console.error('Error creando Live Input de Cloudflare Stream:', err)
@@ -58,7 +73,7 @@ export async function POST(
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -67,20 +82,25 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
     }
 
+    const role: Role = req.nextUrl.searchParams.get('role') === 'backup' ? 'backup' : 'primary'
+    const column = columnFor(role)
+
     const { id: eventId } = await params
     const supabase = createServiceRoleClient()
     const { data: event, error: fetchError } = await supabase
       .from('events')
-      .select('cloudflare_stream_id')
+      .select('cloudflare_stream_id, cloudflare_stream_id_backup')
       .eq('id', eventId)
       .single()
 
-    if (fetchError || !event?.cloudflare_stream_id) {
-      return NextResponse.json({ error: 'Este evento no tiene un Live Input creado todavia.' }, { status: 404 })
+    const uid = event ? (event as Record<string, string | null>)[column] : null
+
+    if (fetchError || !uid) {
+      return NextResponse.json({ error: `Este evento no tiene un Live Input de ${role === 'backup' ? 'respaldo' : 'principal'} creado todavia.` }, { status: 404 })
     }
 
-    const status = await getLiveInputStatus(event.cloudflare_stream_id)
-    return NextResponse.json(status)
+    const status = await getLiveInputStatus(uid)
+    return NextResponse.json({ ...status, role })
   } catch (err) {
     console.error('Error consultando estado del Live Input:', err)
     const message = err instanceof Error ? err.message : 'Error interno.'
