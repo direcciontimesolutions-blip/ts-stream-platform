@@ -29,11 +29,28 @@ export async function GET(
     const supabase = createServiceRoleClient()
 
     // Verificar que el chat esta habilitado
-    const { data: event } = await supabase
+    // Antes: un error transitorio de Supabase en esta query se descartaba en
+    // silencio y caia igual al "if (!event?.chat_enabled)" de abajo, respondiendo
+    // chat_enabled:false como si el chat estuviera realmente apagado. El cliente
+    // (EventPlayer.tsx) tomaba eso al pie de la letra y apagaba el chat sin poder
+    // recuperarse solo. Ahora se distingue: un error real de lectura devuelve 503
+    // (el cliente lo trata como fallo transitorio, no lo interpreta como "apagado"),
+    // solo chat_enabled:false se responde cuando la lectura funciono y el valor real es false.
+    // PGRST116 ("no rows", .single() sin match — evento inexistente) NO es un error
+    // transitorio, es un resultado real: se trata igual que antes, como chat_enabled:false.
+    const { data: event, error: eventError } = await supabase
       .from('events')
       .select('chat_enabled')
       .eq('id', eventId)
       .single()
+
+    if (eventError && eventError.code !== 'PGRST116') {
+      console.error('Error verificando chat_enabled (GET chat):', eventError)
+      return NextResponse.json(
+        { error: 'Error temporal verificando el chat.' },
+        { status: 503 }
+      )
+    }
 
     if (!event?.chat_enabled) {
       return NextResponse.json({ messages: [], chat_enabled: false })
@@ -93,12 +110,22 @@ export async function POST(
 
     const supabase = createServiceRoleClient()
 
-    // Verificar que el chat esta habilitado
-    const { data: event } = await supabase
+    // Verificar que el chat esta habilitado — mismo fix que en GET: distinguir error
+    // real de lectura (503, transitorio) de chat_enabled=false real (403, definitivo).
+    // PGRST116 ("no rows") no es transitorio, es un resultado real (evento inexistente).
+    const { data: event, error: eventError } = await supabase
       .from('events')
       .select('chat_enabled')
       .eq('id', eventId)
       .single()
+
+    if (eventError && eventError.code !== 'PGRST116') {
+      console.error('Error verificando chat_enabled (POST chat):', eventError)
+      return NextResponse.json(
+        { error: 'Error temporal enviando el mensaje. Intenta de nuevo.' },
+        { status: 503 }
+      )
+    }
 
     if (!event?.chat_enabled) {
       return NextResponse.json({ error: 'El chat no esta habilitado.' }, { status: 403 })

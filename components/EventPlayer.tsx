@@ -204,27 +204,37 @@ export default function EventPlayer({
     return () => { active = false }
   }, [streamingTier, cloudflareStreamId])
 
-  // Chat polling
+  // Chat polling — auto-recuperable. Antes, una sola respuesta con chat_enabled:false
+  // apagaba el chat para siempre: chatActive pasaba a false y el useEffect de abajo,
+  // que depende de chatActive para correr, dejaba de ejecutar fetchMessages del todo
+  // (nunca volvia a preguntar). Eso combinado con el bug del backend (que podia
+  // responder chat_enabled:false ante un error transitorio, ver route.ts) apagaba el
+  // chat en falso y sin forma de recuperarse solo.
+  //
+  // Ahora: (1) una respuesta no-ok (ej. 503 por error transitorio del backend) no
+  // toca chatActive — se mantiene el ultimo estado conocido y se reintenta en el
+  // siguiente ciclo; (2) el polling nunca se detiene del todo, solo cambia de
+  // velocidad — cada 5s mientras el chat esta activo, cada 60s mientras esta
+  // inactivo (para no martillar el servidor) revisando si volvio a activarse.
   const fetchMessages = useCallback(async () => {
-    if (!chatActive) return
     try {
       const res = await fetch(`/api/events/${eventId}/chat`)
-      if (res.ok) {
-        const data = await res.json()
-        if (!data.chat_enabled) {
-          setChatActive(false)
-          return
-        }
+      if (!res.ok) return // fallo transitorio — no tocar chatActive, reintentar despues
+      const data = await res.json()
+      if (data.chat_enabled) {
         setChatActive(true)
         setMessages(data.messages ?? [])
+      } else {
+        setChatActive(false)
       }
-    } catch {}
-  }, [eventId, chatActive])
+    } catch {
+      // error de red — transitorio, no tocar chatActive
+    }
+  }, [eventId])
 
   useEffect(() => {
-    if (!chatActive) return
     fetchMessages()
-    const interval = setInterval(fetchMessages, 5_000)
+    const interval = setInterval(fetchMessages, chatActive ? 5_000 : 60_000)
     return () => clearInterval(interval)
   }, [fetchMessages, chatActive])
 
