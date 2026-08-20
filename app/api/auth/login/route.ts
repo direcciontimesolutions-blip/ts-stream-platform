@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     // 2. Buscar el evento por org_id + slug, verificar que este live
     const { data: eventData, error: eventError } = await supabase
       .from('events')
-      .select('id, title, slug, status, start_at, end_at')
+      .select('id, title, slug, status, start_at, end_at, branding')
       .eq('organization_id', organization.id)
       .eq('slug', event)
       .single()
@@ -105,9 +105,16 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Verificar cuantas sesiones activas tiene este asistente en este evento.
-    // Maximo MAX_CONCURRENT_SESSIONS simultaneas (pedido explicito de Julian, 19 ago
-    // 2026 — antes el limite era 1). Se bloquea con 409 solo si ya hay ese maximo de
-    // sesiones FRESCAS.
+    // Limite depende del modo de registro (pedido explicito de Julian, 20 ago 2026):
+    // - Registro abierto (open_registration): 2 sesiones — celular+compu simultaneo es
+    //   un caso valido, decision original del Simposio SCP (nadie controla quien se
+    //   registra, no tiene sentido perseguir sesiones dobles ahi).
+    // - Credenciales generadas por Time Solutions desde una base de datos del cliente:
+    //   1 sesion — "prohibido estar en 2 sesiones o dispositivos al mismo tiempo",
+    //   pensado para desincentivar que alguien comparta su usuario/contrasena (compartir
+    //   se vuelve inutil si el segundo login queda bloqueado en vez de solo desplazar al
+    //   primero). Se bloquea con 409 solo si ya hay ese maximo de sesiones FRESCAS.
+    const openRegistration = (eventData.branding as { open_registration?: boolean } | null)?.open_registration === true
     //
     // Criterio de "fresca" identico al que ya usan app/[org]/[event]/page.tsx y
     // app/[org]/[event]/watch/page.tsx (fix del mismo dia, commit 517e6f5): logout_at/
@@ -124,7 +131,7 @@ export async function POST(req: NextRequest) {
     // supabase/migrations/018_session_limit_atomic.sql, preparada pero AUN NO APLICADA
     // (requiere correrla una vez en el SQL Editor de Supabase, Claude no tiene acceso DDL
     // a la base). Migrar esta ruta a esa funcion via supabase.rpc() en cuanto este aplicada.
-    const MAX_CONCURRENT_SESSIONS = 2
+    const MAX_CONCURRENT_SESSIONS = openRegistration ? 2 : 1
     const FRESH_WINDOW_MS = 5 * 60 * 1000
     const freshCutoff = new Date(Date.now() - FRESH_WINDOW_MS).toISOString()
 
@@ -142,12 +149,10 @@ export async function POST(req: NextRequest) {
     })
 
     if (freshSessions.length >= MAX_CONCURRENT_SESSIONS) {
-      return NextResponse.json(
-        {
-          error: `Ya tienes ${MAX_CONCURRENT_SESSIONS} sesiones activas en otros dispositivos. Cerrá una de esas sesiones primero.`,
-        },
-        { status: 409 }
-      )
+      const message = MAX_CONCURRENT_SESSIONS === 1
+        ? 'Ya tienes una sesión activa en otro dispositivo. Cerrá esa sesión primero para poder ingresar aquí.'
+        : `Ya tienes ${MAX_CONCURRENT_SESSIONS} sesiones activas en otros dispositivos. Cerrá una de esas sesiones primero.`
+      return NextResponse.json({ error: message }, { status: 409 })
     }
 
     // 7. Crear sesion en la tabla sessions

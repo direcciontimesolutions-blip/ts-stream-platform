@@ -92,11 +92,11 @@ $$;
 --     p_event_id: eventData.id,
 --     p_ip_address: ipAddress,
 --     p_user_agent: userAgent,
---     p_max_sessions: 2,
+--     p_max_sessions: openRegistration ? 2 : 1,  // ver comentario en login/route.ts (20 ago 2026)
 --     p_fresh_minutes: 5,
 --   })
 --   const session = sessionRows?.[0]
---   if (!session) return 409 'Ya tienes 2 sesiones activas...'
+--   if (!session) return 409 'Ya tienes sesion(es) activa(s)...'
 --
 -- No es urgente aplicar esto para la prueba del 26 ago (bajo volumen, credenciales
 -- ficticias). Se recomienda aplicarlo antes del evento real del 4 sep (100-400
