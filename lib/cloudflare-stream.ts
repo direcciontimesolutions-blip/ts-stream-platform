@@ -11,6 +11,7 @@
 // Mientras esas variables no existan, las funciones fallan explicito (throw), nunca en silencio.
 
 import { SignJWT, importPKCS8 } from 'jose'
+import { createPrivateKey } from 'node:crypto'
 
 function requireEnv(name: string): string {
   const v = process.env[name]
@@ -89,6 +90,25 @@ export async function deleteVideo(videoId: string): Promise<void> {
   await cfFetch(`/stream/${videoId}`, { method: 'DELETE' })
 }
 
+// El endpoint /stream/keys de Cloudflare devuelve "pem" ya codificado en
+// base64 (no es texto PEM literal, a pesar del nombre del campo) — se
+// confirmo decodificando el valor real guardado. Soporta tambien el caso de
+// que alguien pegue el PEM literal con "\n" escapados a mano, por si acaso.
+//
+// Ademas, la llave que entrega Cloudflare viene en formato PKCS#1
+// ("-----BEGIN RSA PRIVATE KEY-----"), pero jose.importPKCS8 solo acepta
+// PKCS#8 ("-----BEGIN PRIVATE KEY-----") — confirmado con el error real
+// "must be PKCS#8 formatted string" al probar con la llave sin convertir.
+// Se reempaqueta con el modulo crypto de Node (createPrivateKey acepta
+// PKCS#1, export({type:'pkcs8'}) lo saca en el formato que jose necesita).
+function normalizePem(raw: string): string {
+  const literal = raw.includes('-----BEGIN') ? raw.replace(/\\n/g, '\n') : Buffer.from(raw, 'base64').toString('utf-8')
+  if (literal.includes('BEGIN PRIVATE KEY')) return literal // ya es PKCS#8
+
+  const keyObject = createPrivateKey({ key: literal, format: 'pem' })
+  return keyObject.export({ type: 'pkcs8', format: 'pem' }) as string
+}
+
 // ─── Signed URL de reproduccion (por asistente, expira) ─────────────────────
 // Firma local con jose (RS256) — no llama a la API de Cloudflare en cada
 // reproduccion, usa el par de llaves creado una sola vez de antemano.
@@ -97,7 +117,7 @@ export async function generateSignedPlaybackToken(
   expiresInSeconds = 60 * 60 * 6 // 6h — cubre eventos largos sin regenerar
 ): Promise<string> {
   const keyId = requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_ID')
-  const pem = requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_PEM')
+  const pem = normalizePem(requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_PEM'))
 
   const privateKey = await importPKCS8(pem, 'RS256')
   const exp = Math.floor(Date.now() / 1000) + expiresInSeconds
@@ -118,4 +138,53 @@ export function customerCode(): string {
 export async function getSignedIframeUrl(videoId: string): Promise<string> {
   const token = await generateSignedPlaybackToken(videoId)
   return `https://customer-${customerCode()}.cloudflarestream.com/${token}/iframe`
+}
+
+// ─── Live Input (vMix produce en vivo → RTMPS → Cloudflare) ─────────────────
+// Crea el destino RTMPS que se configura en vMix como salida (Settings →
+// Outputs → Stream → RTMP). El "uid" devuelto se usa exactamente igual que
+// el uid de un video VOD para reproduccion (mismo iframe firmado,
+// getSignedIframeUrl funciona sin cambios para un uid de live input).
+export interface LiveInputResult {
+  uid: string
+  rtmpsUrl: string
+  rtmpsStreamKey: string
+}
+
+export async function createLiveInput(opts?: { name?: string }): Promise<LiveInputResult> {
+  const json = await cfFetch('/stream/live_inputs', {
+    method: 'POST',
+    body: JSON.stringify({
+      meta: opts?.name ? { name: opts.name } : undefined,
+      // requireSignedURLs aqui protege TANTO la vista en vivo como el VOD
+      // grabado automaticamente — sin esto, cualquiera con el uid podria ver
+      // la transmision sin pasar por el login de la plataforma.
+      recording: { mode: 'automatic', requireSignedURLs: true },
+    }),
+  })
+  const r = json.result
+  return {
+    uid: r.uid,
+    rtmpsUrl: r.rtmps.url,
+    rtmpsStreamKey: r.rtmps.streamKey,
+  }
+}
+
+export interface LiveInputStatus {
+  uid: string
+  status: 'connected' | 'disconnected' | string
+}
+
+// Chequeo de si vMix esta conectado y transmitiendo de verdad ahora mismo.
+export async function getLiveInputStatus(liveInputUid: string): Promise<LiveInputStatus> {
+  const json = await cfFetch(`/stream/live_inputs/${liveInputUid}`)
+  const r = json.result
+  return {
+    uid: r.uid,
+    status: r.status?.current?.state ?? 'disconnected',
+  }
+}
+
+export async function deleteLiveInput(liveInputUid: string): Promise<void> {
+  await cfFetch(`/stream/live_inputs/${liveInputUid}`, { method: 'DELETE' })
 }

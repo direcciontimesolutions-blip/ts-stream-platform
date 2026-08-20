@@ -251,11 +251,10 @@ export default function EventForm({ organizations }: EventFormProps) {
                 value="cloudflare"
                 checked={form.streaming_tier === 'cloudflare'}
                 onChange={handleChange}
-                disabled
                 className="accent-purple-500"
               />
               <span className="text-sm text-white/80">Cloudflare Stream</span>
-              <span className="text-xs text-white/30">(Fase 2)</span>
+              <span className="text-xs text-white/30">(VOD o en vivo — configurar después de crear el evento)</span>
             </label>
           </div>
         </div>

@@ -72,6 +72,13 @@ export default function EventDetailPage() {
   const [cfVideoState, setCfVideoState] = useState<string | null>(null)
   const [cfCheckingStatus, setCfCheckingStatus] = useState(false)
 
+  // Cloudflare Stream — Live Input (RTMPS para vMix)
+  const [cfCreatingLive, setCfCreatingLive] = useState(false)
+  const [cfLiveError, setCfLiveError] = useState<string | null>(null)
+  const [cfLiveCredentials, setCfLiveCredentials] = useState<{ rtmpsUrl: string; rtmpsStreamKey: string } | null>(null)
+  const [cfLiveStatus, setCfLiveStatus] = useState<string | null>(null)
+  const [cfCheckingLiveStatus, setCfCheckingLiveStatus] = useState(false)
+
   // Chat admin
   const [chatMessages, setChatMessages] = useState<AdminMessage[]>([])
   const [chatTab, setChatTab] = useState(false)
@@ -272,6 +279,42 @@ export default function EventDetailPage() {
       setCfVideoState(res.ok ? data.state : `error: ${data.error}`)
     } finally {
       setCfCheckingStatus(false)
+    }
+  }
+
+  async function handleCreateLiveInput() {
+    if (!event) return
+    if (event.cloudflare_stream_id && !confirm('Ya existe un video/live input para este evento. ¿Crear uno NUEVO y reemplazarlo? Esto no borra el anterior en Cloudflare, solo deja de estar asociado al evento.')) {
+      return
+    }
+    setCfCreatingLive(true)
+    setCfLiveError(null)
+    setCfLiveCredentials(null)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/stream/live-input`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setCfLiveError(data.error ?? 'No se pudo crear el Live Input.')
+        return
+      }
+      setCfLiveCredentials({ rtmpsUrl: data.rtmpsUrl, rtmpsStreamKey: data.rtmpsStreamKey })
+      setEvent((prev) => prev ? { ...prev, cloudflare_stream_id: data.uid } : prev)
+    } catch (err) {
+      setCfLiveError(err instanceof Error ? err.message : 'Error de red.')
+    } finally {
+      setCfCreatingLive(false)
+    }
+  }
+
+  async function handleCheckLiveStatus() {
+    if (!event?.cloudflare_stream_id) return
+    setCfCheckingLiveStatus(true)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/stream/live-input`)
+      const data = await res.json()
+      setCfLiveStatus(res.ok ? data.status : `error: ${data.error}`)
+    } finally {
+      setCfCheckingLiveStatus(false)
     }
   }
 
@@ -663,6 +706,55 @@ export default function EventDetailPage() {
                   <p className="mt-2 text-red-400 text-xs">
                     {cfUploadError} — probablemente falten las variables de entorno de Cloudflare Stream todavia.
                   </p>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-white/10 space-y-2">
+                <p className="text-gray-500 text-xs">Transmisión EN VIVO (RTMPS para vMix)</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={handleCreateLiveInput}
+                    disabled={cfCreatingLive}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {cfCreatingLive ? 'Creando...' : 'Crear Live Input'}
+                  </button>
+                  {event.cloudflare_stream_id && (
+                    <button
+                      onClick={handleCheckLiveStatus}
+                      disabled={cfCheckingLiveStatus}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-white/10 hover:bg-white/15 transition-colors disabled:opacity-50"
+                    >
+                      {cfCheckingLiveStatus ? 'Verificando...' : 'Verificar conexión de vMix'}
+                    </button>
+                  )}
+                  {cfLiveStatus && (
+                    <span className={`text-xs ${cfLiveStatus === 'connected' ? 'text-green-400' : 'text-gray-400'}`}>
+                      {cfLiveStatus === 'connected' ? '● vMix conectado y transmitiendo' : `estado: ${cfLiveStatus}`}
+                    </span>
+                  )}
+                </div>
+
+                {cfLiveError && <p className="text-red-400 text-xs">{cfLiveError}</p>}
+
+                {cfLiveCredentials && (
+                  <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
+                    <p className="text-amber-300 text-xs font-medium">
+                      Copia esto a vMix AHORA (Settings → Outputs → Stream) — Cloudflare no lo vuelve a mostrar:
+                    </p>
+                    <div>
+                      <p className="text-gray-500 text-[10px] uppercase">URL / Server</p>
+                      <code className="text-purple-300 font-mono text-xs bg-black/30 px-2 py-1 rounded block break-all">
+                        {cfLiveCredentials.rtmpsUrl}
+                      </code>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-[10px] uppercase">Stream Key</p>
+                      <code className="text-purple-300 font-mono text-xs bg-black/30 px-2 py-1 rounded block break-all">
+                        {cfLiveCredentials.rtmpsStreamKey}
+                      </code>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

@@ -28,7 +28,12 @@ if (!res.ok || !json.success) {
   process.exit(1)
 }
 
+// La API de Cloudflare devuelve result.pem YA en base64 (confirmado
+// decodificando un valor real — no es texto PEM literal a pesar del nombre
+// del campo). lib/cloudflare-stream.ts (normalizePem) lo decodifica solo,
+// asi que se guarda tal cual, sin tocarlo — evita ademas el problema de
+// meter saltos de linea reales o escapados en un archivo .env de una linea.
 console.log('\nLlave de firma creada. Agregar a .env.local y a Vercel:\n')
 console.log(`CLOUDFLARE_STREAM_SIGNING_KEY_ID=${json.result.id}`)
-console.log(`CLOUDFLARE_STREAM_SIGNING_KEY_PEM="${json.result.pem.replace(/\n/g, '\\n')}"`)
+console.log(`CLOUDFLARE_STREAM_SIGNING_KEY_PEM=${json.result.pem}`)
 console.log('\nGuardar el PEM en un lugar seguro — Cloudflare no lo vuelve a mostrar despues de esto.\n')
