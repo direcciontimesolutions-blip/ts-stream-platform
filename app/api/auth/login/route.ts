@@ -104,38 +104,48 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 6. Verificar que no haya una sesión activa en otro dispositivo.
-    // Dos queries separadas para evitar problemas de parseo con .or() y timestamps.
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    // 6. Verificar cuantas sesiones activas tiene este asistente en este evento.
+    // Maximo MAX_CONCURRENT_SESSIONS simultaneas (pedido explicito de Julian, 19 ago
+    // 2026 — antes el limite era 1). Se bloquea con 409 solo si ya hay ese maximo de
+    // sesiones FRESCAS.
+    //
+    // Criterio de "fresca" identico al que ya usan app/[org]/[event]/page.tsx y
+    // app/[org]/[event]/watch/page.tsx (fix del mismo dia, commit 517e6f5): logout_at/
+    // kicked_at NULL y (last_ping_at ?? login_at) dentro de los ultimos 5 minutos. Antes
+    // esta ruta usaba un criterio distinto e inconsistente (umbral de 2 min, fallback a
+    // created_at en vez de login_at) — ahora usa el mismo criterio en todo el sistema.
+    //
+    // Nota de concurrencia: este conteo se hace en memoria (leer, luego insertar), no es
+    // atomico a nivel de base de datos. Dos logins del MISMO asistente llegando en la
+    // misma fraccion de segundo (ej. doble clic, 2 pestañas abiertas al mismo tiempo)
+    // podrian en teoria colarse como 3ra sesion antes de que cualquiera termine de
+    // insertar. Para cerrar esa ventana por completo hace falta una funcion Postgres
+    // (SELECT ... FOR UPDATE) que serialice esto a nivel de transaccion — ver
+    // supabase/migrations/018_session_limit_atomic.sql, preparada pero AUN NO APLICADA
+    // (requiere correrla una vez en el SQL Editor de Supabase, Claude no tiene acceso DDL
+    // a la base). Migrar esta ruta a esa funcion via supabase.rpc() en cuanto este aplicada.
+    const MAX_CONCURRENT_SESSIONS = 2
+    const FRESH_WINDOW_MS = 5 * 60 * 1000
+    const freshCutoff = new Date(Date.now() - FRESH_WINDOW_MS).toISOString()
 
-    // 6a. Sesión con ping reciente
-    const { data: sessionByPing } = await supabase
+    const { data: openSessions } = await supabase
       .from('sessions')
-      .select('id')
+      .select('id, last_ping_at, login_at')
       .eq('attendee_id', attendee.id)
       .eq('event_id', eventData.id)
       .is('logout_at', null)
       .is('kicked_at', null)
-      .gte('last_ping_at', twoMinutesAgo)
-      .limit(1)
-      .maybeSingle()
 
-    // 6b. Sesión recién creada pero sin ping todavía (last_ping_at es NULL los primeros ~30s)
-    const { data: sessionByCreate } = await supabase
-      .from('sessions')
-      .select('id')
-      .eq('attendee_id', attendee.id)
-      .eq('event_id', eventData.id)
-      .is('logout_at', null)
-      .is('kicked_at', null)
-      .is('last_ping_at', null)
-      .gte('created_at', twoMinutesAgo)
-      .limit(1)
-      .maybeSingle()
+    const freshSessions = (openSessions ?? []).filter((s) => {
+      const lastActivity = s.last_ping_at ?? s.login_at
+      return !!lastActivity && lastActivity >= freshCutoff
+    })
 
-    if (sessionByPing || sessionByCreate) {
+    if (freshSessions.length >= MAX_CONCURRENT_SESSIONS) {
       return NextResponse.json(
-        { error: 'Ya tienes una sesión activa en otro dispositivo. Cerrá esa sesión primero.' },
+        {
+          error: `Ya tienes ${MAX_CONCURRENT_SESSIONS} sesiones activas en otros dispositivos. Cerrá una de esas sesiones primero.`,
+        },
         { status: 409 }
       )
     }
@@ -155,8 +165,11 @@ export async function POST(req: NextRequest) {
       .select('id')
       .single()
 
-    // 7b. Invalidar sesiones anteriores del mismo asistente en este evento.
-    // Esto evita que un browser antiguo reabierto reactive una sesión huérfana.
+    // 7b. Housekeeping: cerrar sesiones huerfanas (abiertas pero YA NO frescas) del mismo
+    // asistente en este evento. A diferencia del comportamiento anterior (que invalidaba
+    // TODAS las demas sesiones abiertas, correcto solo para limite=1), esto deja intactas
+    // las sesiones hermanas que siguen frescas — de lo contrario, con limite=2, un login
+    // nuevo mataria la sesion del otro dispositivo activo.
     if (session) {
       await supabase
         .from('sessions')
@@ -166,6 +179,9 @@ export async function POST(req: NextRequest) {
         .is('logout_at', null)
         .is('kicked_at', null)
         .neq('id', session.id)
+        // Equivalente a COALESCE(last_ping_at, login_at) < freshCutoff, mismo criterio
+        // de frescura del paso 6.
+        .or(`last_ping_at.lt.${freshCutoff},and(last_ping_at.is.null,login_at.lt.${freshCutoff})`)
     }
 
     if (sessionError || !session) {
