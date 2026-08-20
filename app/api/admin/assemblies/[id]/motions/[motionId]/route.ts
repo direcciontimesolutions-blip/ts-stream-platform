@@ -1,22 +1,17 @@
 // app/api/admin/assemblies/[id]/motions/[motionId]/route.ts — Controlar estado de un punto
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { verifyAdminUser, createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/assembly-audit'
 import { calculateQuorumPct } from '@/lib/assembly-quorum'
 
-async function verifyAdmin() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; motionId: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: assemblyId, motionId } = await params
@@ -92,7 +87,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; motionId: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { motionId } = await params

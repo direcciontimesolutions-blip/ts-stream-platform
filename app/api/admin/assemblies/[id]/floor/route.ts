@@ -1,21 +1,16 @@
 // app/api/admin/assemblies/[id]/floor/route.ts — Moderador: ver manos y conceder/revocar palabra
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { verifyAdminUser, createServiceRoleClient } from '@/lib/supabase/server'
 import { generateRtcToken, uuidToAgoraUid, APP_ID } from '@/lib/agora-token'
 
 type Params = { params: Promise<{ id: string }> }
 
-async function verifyAdmin() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 // GET — lista de requests activos (pending + granted)
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: assemblyId } = await params
@@ -39,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // PATCH ?requestId=... — conceder o revocar
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: assemblyId } = await params
@@ -99,7 +94,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // DELETE ?requestId=... — eliminar request (limpiar historial)
 export async function DELETE(req: NextRequest, { params }: Params) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: assemblyId } = await params

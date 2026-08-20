@@ -1,13 +1,8 @@
 // app/api/admin/events/[id]/moderators/route.ts — Gestionar moderadores del evento
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { verifyAdminUser, createServiceRoleClient } from '@/lib/supabase/server'
 
-async function verifyAdmin() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 // GET — lista de moderadores del evento
 export async function GET(
@@ -15,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: eventId } = await params
@@ -40,7 +35,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: eventId } = await params

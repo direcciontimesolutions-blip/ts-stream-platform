@@ -112,13 +112,24 @@ export default function EventDetailPage() {
   const [newPollShowResults, setNewPollShowResults] = useState(false)
   const [creatingPoll, setCreatingPoll] = useState(false)
 
+  // Un 401 aislado del polling de 30s no fuerza logout inmediato — la API ya reintenta
+  // internamente ante fallos transitorios de Supabase Auth (ver verifyAdminUser en
+  // lib/supabase/server.ts), pero un admin con sesion valida no deberia ser expulsado
+  // por un solo hipo de red de este fetch tampoco. Solo redirige a login si un SEGUNDO
+  // intento (inmediato) confirma el 401 — un fallo verdaderamente aislado ya no expulsa.
   const fetchEvent = useCallback(async () => {
     try {
-      const [eventRes, attendeesRes] = await Promise.all([
+      let [eventRes, attendeesRes] = await Promise.all([
         fetch(`/api/admin/events/${eventId}`),
         fetch(`/api/admin/events/${eventId}/attendees`),
       ])
-      if (eventRes.status === 401) { router.push('/admin'); return }
+      if (eventRes.status === 401) {
+        ;[eventRes, attendeesRes] = await Promise.all([
+          fetch(`/api/admin/events/${eventId}`),
+          fetch(`/api/admin/events/${eventId}/attendees`),
+        ])
+        if (eventRes.status === 401) { router.push('/admin'); return }
+      }
       if (eventRes.ok) setEvent(await eventRes.json())
       if (attendeesRes.ok) setAttendees(await attendeesRes.json())
     } finally {

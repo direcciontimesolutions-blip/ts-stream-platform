@@ -2,22 +2,17 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { verifyAdminUser, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseCSV, generatePassword } from '@/lib/utils'
 import type { ImportResult } from '@/types'
 
-async function verifyAdmin() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) {
       return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
     }

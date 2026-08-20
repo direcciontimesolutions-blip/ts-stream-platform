@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { createServerClient } from '@supabase/ssr'
+import { resolveUserWithRetry } from '@/lib/supabase/auth-retry'
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? 'dev-secret-change-in-production-64chars-minimum'
@@ -72,7 +73,13 @@ export async function proxy(request: NextRequest) {
         },
       }
     )
-    const { data: { user } } = await supabase.auth.getUser()
+    // Un solo fallo transitorio de auth.getUser() (red/timeout/5xx de Supabase) ya no
+    // desloguea al admin — reintenta una vez antes de concluir que la sesion es invalida.
+    // Ver lib/supabase/auth-retry.ts.
+    const user = await resolveUserWithRetry(async () => {
+      const { data, error } = await supabase.auth.getUser()
+      return { user: data.user, error }
+    })
     if (!user) {
       const loginUrl = new URL('/admin', request.url)
       loginUrl.searchParams.set('redirect', pathname)

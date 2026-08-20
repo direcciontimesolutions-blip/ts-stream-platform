@@ -2,18 +2,13 @@
 // El admin sube el archivo de video desde el navegador directo a esa URL (no pasa por Vercel).
 
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { verifyAdminUser } from '@/lib/supabase/server'
 import { createDirectUploadUrl } from '@/lib/cloudflare-stream'
 
-async function verifyAdmin() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 export async function POST() {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) {
       return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
     }

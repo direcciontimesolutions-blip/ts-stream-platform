@@ -1,20 +1,15 @@
 // app/api/admin/assemblies/[id]/qr/route.ts — Generar y obtener token QR de registro presencial
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { verifyAdminUser, createServiceRoleClient } from '@/lib/supabase/server'
 
-async function verifyAdmin() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: assemblyId } = await params
@@ -64,7 +59,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyAdmin()
+    const user = await verifyAdminUser()
     if (!user) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
     const { id: assemblyId } = await params
