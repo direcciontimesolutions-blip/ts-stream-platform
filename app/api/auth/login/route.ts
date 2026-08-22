@@ -63,15 +63,37 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // 2b. Rate limiting por (evento, usuario, ip) — ver supabase/migrations/020_login_rate_limit.sql.
+    // Chequeo ANTES del bcrypt costoso para no gastar computo en intentos ya bloqueados.
+    // La proteccion contra flood/DoS por IP vive aparte, en Vercel Firewall (edge, no aqui).
+    const normalizedUsername = username.trim().toLowerCase()
+    const ipAddress = getClientIP(req)
+
+    const { data: lockedUntil } = await supabase.rpc('check_login_lock', {
+      p_event_id: eventData.id,
+      p_username: normalizedUsername,
+      p_ip_address: ipAddress,
+    })
+
+    if (lockedUntil) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos fallidos. Intenta de nuevo en unos minutos, o contacta al organizador.' },
+        { status: 429 }
+      )
+    }
+
     // 3. Buscar el asistente por event_id + username
     const { data: attendee, error: attendeeError } = await supabase
       .from('attendees')
       .select('id, full_name, username, password_hash, role')
       .eq('event_id', eventData.id)
-      .eq('username', username.trim().toLowerCase())
+      .eq('username', normalizedUsername)
       .single()
 
     if (attendeeError || !attendee) {
+      await supabase.rpc('record_failed_login', {
+        p_event_id: eventData.id, p_username: normalizedUsername, p_ip_address: ipAddress,
+      })
       return NextResponse.json(
         { error: 'Usuario o contrasena incorrectos.' },
         { status: 401 }
@@ -81,11 +103,19 @@ export async function POST(req: NextRequest) {
     // 4. Verificar password con bcrypt
     const passwordOk = await bcrypt.compare(password, attendee.password_hash)
     if (!passwordOk) {
+      await supabase.rpc('record_failed_login', {
+        p_event_id: eventData.id, p_username: normalizedUsername, p_ip_address: ipAddress,
+      })
       return NextResponse.json(
         { error: 'Usuario o contrasena incorrectos.' },
         { status: 401 }
       )
     }
+
+    // Password correcto — limpiar el contador de intentos fallidos de este (evento, usuario, ip).
+    await supabase.rpc('clear_login_attempts', {
+      p_event_id: eventData.id, p_username: normalizedUsername, p_ip_address: ipAddress,
+    })
 
     // 5. Verificar que el asistente no fue expulsado de este evento
     const { data: kickedSession } = await supabase
@@ -123,7 +153,6 @@ export async function POST(req: NextRequest) {
     //   primero). Se bloquea con 409 solo si ya hay ese maximo de sesiones FRESCAS.
     const openRegistration = (eventData.branding as { open_registration?: boolean } | null)?.open_registration === true
     const MAX_CONCURRENT_SESSIONS = openRegistration ? 2 : 1
-    const ipAddress = getClientIP(req)
     const userAgent = req.headers.get('user-agent') ?? 'unknown'
 
     const { data: sessionRows, error: sessionError } = await supabase.rpc('try_create_session', {

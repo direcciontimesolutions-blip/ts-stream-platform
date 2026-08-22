@@ -1,10 +1,11 @@
 -- 018_session_limit_atomic.sql — Limite de sesiones concurrentes, version atomica
 --
--- PENDIENTE DE APLICAR (19 ago 2026): Claude no tiene SUPABASE_ACCESS_TOKEN ni password
--- de la base para correr migraciones via CLI/DDL directo, asi que este archivo quedo listo
--- pero SIN aplicar. Julian: pegar este contenido completo en el SQL Editor de Supabase
--- (dashboard del proyecto -> SQL Editor -> New query -> pegar -> Run) una sola vez, antes
--- del evento real del 4 sep si se quiere cerrar la ventana de carrera descrita abajo.
+-- ✅ APLICADA (20 ago 2026): Julian corrio este SQL en el SQL Editor de Supabase
+-- ("Success. No rows returned"). app/api/auth/login/route.ts ya usa
+-- supabase.rpc('try_create_session', ...) sin fallback al patron viejo. Confirmado con
+-- prueba real (2 logins simultaneos del mismo usuario via Promise.all, solo 1 entro) y
+-- con la prueba de carga k6 Cloud de 1.000 VUs (0.019% de error, logins reales exitosos).
+-- El comentario de abajo describe el problema que resuelve, dejado tal cual por contexto.
 --
 -- Contexto: app/api/auth/login/route.ts hoy hace el limite de "maximo 2 sesiones
 -- simultaneas por asistente" contando en memoria (leer sesiones abiertas, filtrar por

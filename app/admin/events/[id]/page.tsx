@@ -104,6 +104,8 @@ export default function EventDetailPage() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [deletingAttendeeId, setDeletingAttendeeId] = useState<string | null>(null)
+  const [unlockingAttendeeId, setUnlockingAttendeeId] = useState<string | null>(null)
+  const [unlockedFeedbackId, setUnlockedFeedbackId] = useState<string | null>(null)
 
   // Polls
   interface PollOption { id: string; text: string }
@@ -474,6 +476,19 @@ export default function EventDetailPage() {
     if (!confirm('¿Restaurar el acceso de este asistente?')) return
     await fetch(`/api/admin/events/${eventId}/attendees/${attendeeId}/restore`, { method: 'POST' })
     fetchEvent()
+  }
+
+  async function handleUnlockLogin(attendeeId: string) {
+    setUnlockingAttendeeId(attendeeId)
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/attendees/${attendeeId}/unlock-login`, { method: 'POST' })
+      if (res.ok) {
+        setUnlockedFeedbackId(attendeeId)
+        setTimeout(() => setUnlockedFeedbackId((prev) => (prev === attendeeId ? null : prev)), 2500)
+      }
+    } finally {
+      setUnlockingAttendeeId(null)
+    }
   }
 
   async function handleDeleteAttendee(attendeeId: string, name: string) {
@@ -1369,7 +1384,19 @@ export default function EventDetailPage() {
                             <span className="text-xs text-gray-600">—</span>
                           )}
                         </td>
-                        <td className="px-5 py-3 text-right">
+                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => handleUnlockLogin(attendee.id)}
+                            disabled={unlockingAttendeeId === attendee.id}
+                            className="text-xs text-blue-400/70 hover:text-blue-300 disabled:opacity-30 transition-colors px-2 py-1 rounded hover:bg-blue-500/10"
+                            title="Desbloquear login — usar si el asistente reporta 'demasiados intentos fallidos'"
+                          >
+                            {unlockingAttendeeId === attendee.id
+                              ? '...'
+                              : unlockedFeedbackId === attendee.id
+                              ? 'Desbloqueado ✓'
+                              : 'Desbloquear login'}
+                          </button>
                           <button
                             onClick={() => handleDeleteAttendee(attendee.id, attendee.full_name)}
                             disabled={deletingAttendeeId === attendee.id}
