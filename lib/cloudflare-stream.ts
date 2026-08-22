@@ -112,12 +112,18 @@ function normalizePem(raw: string): string {
 // ─── Signed URL de reproduccion (por asistente, expira) ─────────────────────
 // Firma local con jose (RS256) — no llama a la API de Cloudflare en cada
 // reproduccion, usa el par de llaves creado una sola vez de antemano.
+//
+// keyOverride permite firmar con una llave DISTINTA a la de asistentes (ej.
+// para el embed que se le entrega a un proveedor externo) — asi, si ese link
+// se filtra o hay que revocarlo, se rota solo esa llave (POST /stream/keys +
+// DELETE de la vieja) sin invalidar las sesiones de los asistentes reales.
 export async function generateSignedPlaybackToken(
   videoId: string,
-  expiresInSeconds = 60 * 60 * 6 // 6h — cubre eventos largos sin regenerar
+  expiresInSeconds = 60 * 60 * 6, // 6h — cubre eventos largos sin regenerar
+  keyOverride?: { keyId: string; pem: string }
 ): Promise<string> {
-  const keyId = requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_ID')
-  const pem = normalizePem(requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_PEM'))
+  const keyId = keyOverride?.keyId ?? requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_ID')
+  const pem = normalizePem(keyOverride?.pem ?? requireEnv('CLOUDFLARE_STREAM_SIGNING_KEY_PEM'))
 
   const privateKey = await importPKCS8(pem, 'RS256')
   const exp = Math.floor(Date.now() / 1000) + expiresInSeconds
@@ -135,9 +141,23 @@ export function customerCode(): string {
 }
 
 // Iframe listo para <iframe src=... /> — mismo patron que el embed de YouTube/Teams
-export async function getSignedIframeUrl(videoId: string): Promise<string> {
-  const token = await generateSignedPlaybackToken(videoId)
+export async function getSignedIframeUrl(
+  videoId: string,
+  expiresInSeconds?: number,
+  keyOverride?: { keyId: string; pem: string }
+): Promise<string> {
+  const token = await generateSignedPlaybackToken(videoId, expiresInSeconds, keyOverride)
   return `https://customer-${customerCode()}.cloudflarestream.com/${token}/iframe`
+}
+
+// ─── Llave de firma dedicada al embed de proveedores externos ──────────────
+// Separada de CLOUDFLARE_STREAM_SIGNING_KEY_ID/PEM (la de asistentes) a
+// proposito — ver comentario de generateSignedPlaybackToken arriba.
+export function embedSigningKey(): { keyId: string; pem: string } {
+  return {
+    keyId: requireEnv('CLOUDFLARE_STREAM_EMBED_SIGNING_KEY_ID'),
+    pem: requireEnv('CLOUDFLARE_STREAM_EMBED_SIGNING_KEY_PEM'),
+  }
 }
 
 // ─── Live Input (vMix produce en vivo → RTMPS → Cloudflare) ─────────────────
