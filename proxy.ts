@@ -6,9 +6,18 @@ import { jwtVerify } from 'jose'
 import { createServerClient } from '@supabase/ssr'
 import { resolveUserWithRetry } from '@/lib/supabase/auth-retry'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? 'dev-secret-change-in-production-64chars-minimum'
-)
+// Mismo criterio que lib/auth.ts: en produccion, JWT_SECRET faltante rompe
+// ruidosamente en vez de firmar/verificar en silencio con un secreto de repuesto.
+function resolveJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (secret) return secret
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Falta JWT_SECRET en produccion — no se pueden firmar/verificar sesiones sin ella.')
+  }
+  return 'dev-secret-change-in-production-64chars-minimum'
+}
+
+const JWT_SECRET = new TextEncoder().encode(resolveJwtSecret())
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl

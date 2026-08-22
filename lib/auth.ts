@@ -5,9 +5,18 @@ import { cookies } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import type { AttendeeJWTPayload, ModeratorJWTPayload } from '@/types'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? 'dev-secret-change-in-production-64chars-minimum'
-)
+// En produccion, JWT_SECRET faltante debe romper todo ruidosamente (build/cold-start),
+// nunca firmar sesiones en silencio con un secreto de repuesto que vive en el codigo fuente.
+function resolveJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (secret) return secret
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Falta JWT_SECRET en produccion — no se pueden firmar/verificar sesiones sin ella.')
+  }
+  return 'dev-secret-change-in-production-64chars-minimum'
+}
+
+const JWT_SECRET = new TextEncoder().encode(resolveJwtSecret())
 
 // ─── Asistentes ────────────────────────────────────────────────────────────
 

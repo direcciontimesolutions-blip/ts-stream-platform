@@ -1,5 +1,7 @@
 // lib/utils.ts — Helpers generales
 
+import { randomInt } from 'node:crypto'
+
 /**
  * Extrae el video ID de cualquier formato de URL de YouTube:
  * - https://www.youtube.com/watch?v=VIDEO_ID
@@ -38,13 +40,14 @@ export function slugify(text: string): string {
 }
 
 /**
- * Genera un password aleatorio de 8 caracteres [A-Z0-9]
+ * Genera un password aleatorio de 8 caracteres [A-Z0-9] — crypto.randomInt
+ * (CSPRNG), no Math.random(), porque esto son credenciales de acceso reales.
  */
 export function generatePassword(length = 8): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let result = ''
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+    result += chars.charAt(randomInt(0, chars.length))
   }
   return result
 }
