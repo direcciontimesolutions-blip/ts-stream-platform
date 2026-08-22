@@ -44,3 +44,4 @@ next-env.d.ts
 
 # Credenciales generadas ad-hoc (nunca commitear)
 .admin_credentials*
+.vmix-credentials*
